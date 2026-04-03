@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniswapV3Pool — Annotated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0f14;
+  --bg2: #13161d;
+  --bg3: #1a1e28;
+  --bg4: #20263a;
+  --border: #2a2f42;
+  --border2: #353c55;
+  --text: #c8cfdf;
+  --text2: #7a849f;
+  --text3: #4a5268;
+  --accent: #4f87ff;
+  --accent2: #7c5cfc;
+  --green: #3ecf8e;
+  --amber: #f5a623;
+  --red: #f06565;
+  --pink: #e879a2;
+  --teal: #38bdf8;
+  --purple: #a78bfa;
+
+  /* Syntax colors */
+  --s-keyword: #c792ea;
+  --s-type: #82aaff;
+  --s-func: #82aaff;
+  --s-string: #c3e88d;
+  --s-number: #f78c6c;
+  --s-comment: #546e7a;
+  --s-comment-doc: #4a7c6f;
+  --s-operator: #89ddff;
+  --s-var: #eeffff;
+  --s-param: #ffcb6b;
+  --s-event: #f07178;
+  --s-modifier: #c3e88d;
+  --s-error: #f07178;
+  --s-uint: #f78c6c;
+}
+
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo-badge {
+  background: linear-gradient(135deg, #4f87ff, #7c5cfc);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.header-title { font-size: 15px; font-weight: 600; color: #eef; }
+.header-sub { font-size: 12px; color: var(--text2); }
+.header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text2); }
+.stat-pill {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+.stat-pill span { color: var(--accent); font-weight: 600; }
+
+/* ── Layout ── */
+.app {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Sidebar nav ── */
+.sidenav {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 0;
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+}
+.sidenav-section { padding: 8px 16px 4px; font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--text3); text-transform: uppercase; }
+.sidenav-link {
+  display: block;
+  padding: 5px 16px;
+  font-size: 12px;
+  color: var(--text2);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.sidenav-link:hover { color: var(--text); background: var(--bg3); }
+.sidenav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,135,255,.06); }
+.sidenav-link .badge {
+  float: right;
+  font-size: 10px;
+  background: var(--bg4);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--text3);
+}
+
+/* ── Code pane ── */
+.code-pane {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.code-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* ── Explanation panel ── */
+.explain-pane {
+  width: 380px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+  background: var(--bg2);
+}
+.explain-inner { padding: 24px; }
+.explain-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text3);
+  text-align: center;
+  gap: 12px;
+  padding: 40px 24px;
+}
+.explain-placeholder .icon { font-size: 32px; opacity: .4; }
+.explain-placeholder p { font-size: 13px; line-height: 1.6; }
+.explain-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.tag-state  { background: rgba(79,135,255,.15); color: var(--accent); }
+.tag-func   { background: rgba(124,92,252,.15); color: var(--accent2); }
+.tag-math   { background: rgba(245,166,35,.15); color: var(--amber); }
+.tag-sec    { background: rgba(240,101,101,.15); color: var(--red); }
+.tag-oracle { background: rgba(56,189,248,.15); color: var(--teal); }
+.tag-core   { background: rgba(62,207,142,.15); color: var(--green); }
+
+.explain-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #eef;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+.explain-subtitle {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 20px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.explain-body {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text);
+}
+.explain-body p { margin-bottom: 14px; }
+.explain-body strong { color: #eef; font-weight: 600; }
+.explain-body code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--s-param);
+}
+.explain-body ul { padding-left: 18px; margin-bottom: 14px; }
+.explain-body li { margin-bottom: 6px; }
+.explain-body a { color: var(--accent); text-decoration: none; }
+
+.field-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; }
+.field-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+}
+.field-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+.field-table td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--s-param); white-space: nowrap; }
+.field-table td:last-child { color: var(--text2); }
+
+.callout {
+  border-left: 3px solid;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  margin: 14px 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.callout-gas  { border-color: var(--amber); background: rgba(245,166,35,.07); }
+.callout-sec  { border-color: var(--red);   background: rgba(240,101,101,.07); }
+.callout-math { border-color: var(--teal);  background: rgba(56,189,248,.07); }
+.callout-tip  { border-color: var(--green); background: rgba(62,207,142,.07); }
+.callout-label { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 5px; }
+.callout-gas  .callout-label { color: var(--amber); }
+.callout-sec  .callout-label { color: var(--red); }
+.callout-math .callout-label { color: var(--teal); }
+.callout-tip  .callout-label { color: var(--green); }
+
+/* ── Code blocks ── */
+.code-section {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s;
+}
+.code-section:hover { background: rgba(255,255,255,.012); }
+.code-section.active { background: rgba(79,135,255,.04); border-left: 3px solid var(--accent); }
+
+.section-header {
+  padding: 18px 24px 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  user-select: none;
+}
+.section-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  width: 20px;
+}
+.section-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  flex: 1;
+}
+.code-section.active .section-name { color: var(--accent); }
+.section-hint { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+
+pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 0 24px 20px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Syntax highlighting spans */
+.k  { color: var(--s-keyword); }     /* keyword */
+.t  { color: var(--s-type); }        /* type */
+.fn { color: #82aaff; }              /* function name */
+.s  { color: var(--s-string); }      /* string */
+.n  { color: var(--s-number); }      /* number */
+.c  { color: var(--s-comment); font-style: italic; }    /* comment */
+.cd { color: var(--s-comment-doc); font-style: italic; } /* doc comment */
+.op { color: var(--s-operator); }    /* operator */
+.v  { color: var(--s-var); }         /* variable */
+.p  { color: var(--s-param); }       /* param/field */
+.ev { color: var(--s-event); }       /* event */
+.m  { color: var(--s-modifier); }    /* modifier */
+.er { color: var(--s-error); }       /* error */
+.li { color: var(--text2); }         /* line number */
+
+.line { display: flex; }
+.ln { color: var(--text3); min-width: 40px; text-align: right; padding-right: 20px; user-select: none; font-size: 11px; line-height: 1.7; }
+
+@media (max-width: 1100px) {
+  .explain-pane { display: none; }
+}
+@media (max-width: 780px) {
+  .sidenav { display: none; }
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+.explain-sep { height: 1px; background: var(--border); margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-badge">UNI V3</div>
+    <div>
+      <div class="header-title">UniswapV3Pool.sol</div>
+      <div class="header-sub">Annotated &amp; explained — click any section</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill">Lines: <span>~900</span></div>
+    <div class="stat-pill">Functions: <span>12</span></div>
+    <div class="stat-pill">Solidity <span>^0.7.6</span></div>
+  </div>
+</header>
+
+<div class="app">
+
+<!-- Sidebar -->
+<nav class="sidenav">
+  <div class="sidenav-section">State</div>
+  <div class="sidenav-link" onclick="activateSection('s-slot0')">slot0 <span class="badge">packed</span></div>
+  <div class="sidenav-link" onclick="activateSection('s-feegrowth')">feeGrowthGlobal</div>
+  <div class="sidenav-link" onclick="activateSection('s-liquidity')">liquidity</div>
+  <div class="sidenav-link" onclick="activateSection('s-mappings')">ticks / bitmap <span class="badge">maps</span></div>
+  <div class="sidenav-link" onclick="activateSection('s-positions')">positions</div>
+  <div class="sidenav-link" onclick="activateSection('s-observations')">observations <span class="badge">TWAP</span></div>
+
+  <div class="sidenav-section">Setup</div>
+  <div class="sidenav-link" onclick="activateSection('s-constructor')">constructor()</div>
+  <div class="sidenav-link" onclick="activateSection('s-initialize')">initialize()</div>
+
+  <div class="sidenav-section">Liquidity</div>
+  <div class="sidenav-link" onclick="activateSection('s-mint')">mint() <span class="badge">core</span></div>
+  <div class="sidenav-link" onclick="activateSection('s-collect')">collect()</div>
+  <div class="sidenav-link" onclick="activateSection('s-burn')">burn()</div>
+  <div class="sidenav-link" onclick="activateSection('s-update-pos')">_updatePosition()</div>
+
+  <div class="sidenav-section">Trading</div>
+  <div class="sidenav-link" onclick="activateSection('s-swap')">swap() <span class="badge">★</span></div>
+  <div class="sidenav-link" onclick="activateSection('s-flash')">flash()</div>
+
+  <div class="sidenav-section">Oracle</div>
+  <div class="sidenav-link" onclick="activateSection('s-observe')">observe()</div>
+  <div class="sidenav-link" onclick="activateSection('s-snapshot')">snapshotCumulatives()</div>
+
+  <div class="sidenav-section">Governance</div>
+  <div class="sidenav-link" onclick="activateSection('s-protocol')">setFeeProtocol()</div>
+  <div class="sidenav-link" onclick="activateSection('s-collect-protocol')">collectProtocol()</div>
+</nav>
+
+<!-- Code pane -->
+<div class="code-pane">
+<div class="code-scroll" id="code-scroll">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: Pragma + Imports -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-pragma" onclick="activateSection('s-pragma')">
+  <div class="section-header">
+    <div class="section-num">01</div>
+    <div class="section-name">Pragma, Imports &amp; Contract Declaration</div>
+    <div class="section-hint">IUniswapV3Pool · NoDelegateCall · Ownable</div>
+  </div>
+<pre><span class="c">// SPDX-License-Identifier: BUSL-1.1</span>
+<span class="c">// Business Source License: commercial use restricted for 2 years,</span>
+<span class="c">// then converts to GPL-2.0-or-later.</span>
+<span class="k">pragma solidity</span> <span class="op">^</span><span class="n">0.7.6</span>;
+
+<span class="k">import</span> <span class="s">'./interfaces/IUniswapV3Pool.sol'</span>;
+<span class="k">import</span> <span class="s">'./NoDelegateCall.sol'</span>;
+
+<span class="k">import</span> <span class="s">'./libraries/LowGasSafeMath.sol'</span>;   <span class="c">// overflow-safe math, cheaper than SafeMath</span>
+<span class="k">import</span> <span class="s">'./libraries/SafeCast.sol'</span>;          <span class="c">// uint→int & int→uint with revert on overflow</span>
+<span class="k">import</span> <span class="s">'./libraries/Tick.sol'</span>;             <span class="c">// TickInfo struct + cross() logic</span>
+<span class="k">import</span> <span class="s">'./libraries/TickBitmap.sol'</span>;        <span class="c">// packed bitmap: find next initialized tick</span>
+<span class="k">import</span> <span class="s">'./libraries/Position.sol'</span>;          <span class="c">// LP position struct + fee accounting</span>
+<span class="k">import</span> <span class="s">'./libraries/Oracle.sol'</span>;            <span class="c">// TWAP circular buffer</span>
+<span class="k">import</span> <span class="s">'./libraries/FullMath.sol'</span>;          <span class="c">// mulDiv with 512-bit intermediates</span>
+<span class="k">import</span> <span class="s">'./libraries/FixedPoint128.sol'</span>;     <span class="c">// Q128 constant (2^128)</span>
+<span class="k">import</span> <span class="s">'./libraries/TransferHelper.sol'</span>;    <span class="c">// safe ERC-20 transfer wrapper</span>
+<span class="k">import</span> <span class="s">'./libraries/SqrtPriceMath.sol'</span>;    <span class="c">// token amounts from sqrt-price deltas</span>
+<span class="k">import</span> <span class="s">'./libraries/SwapMath.sol'</span>;         <span class="c">// single-step swap computation</span>
+<span class="k">import</span> <span class="s">'./interfaces/IUniswapV3PoolDeployer.sol'</span>;
+<span class="k">import</span> <span class="s">'./interfaces/IUniswapV3Factory.sol'</span>;
+<span class="k">import</span> <span class="s">'./interfaces/IERC20Minimal.sol'</span>;
+<span class="k">import</span> <span class="s">'./interfaces/callback/IUniswapV3MintCallback.sol'</span>;
+<span class="k">import</span> <span class="s">'./interfaces/callback/IUniswapV3SwapCallback.sol'</span>;
+<span class="k">import</span> <span class="s">'./interfaces/callback/IUniswapV3FlashCallback.sol'</span>;
+
+<span class="k">contract</span> <span class="t">UniswapV3Pool</span> <span class="k">is</span> <span class="t">IUniswapV3Pool</span>, <span class="t">NoDelegateCall</span> {
+    <span class="k">using</span> <span class="t">LowGasSafeMath</span> <span class="k">for</span> <span class="t">uint256</span>;
+    <span class="k">using</span> <span class="t">LowGasSafeMath</span> <span class="k">for</span> <span class="t">int256</span>;
+    <span class="k">using</span> <span class="t">SafeCast</span>       <span class="k">for</span> <span class="t">uint256</span>;
+    <span class="k">using</span> <span class="t">SafeCast</span>       <span class="k">for</span> <span class="t">int256</span>;
+    <span class="k">using</span> <span class="t">Tick</span>           <span class="k">for</span> <span class="k">mapping</span>(<span class="t">int24</span> <span class="op">=></span> <span class="t">Tick.Info</span>);
+    <span class="k">using</span> <span class="t">TickBitmap</span>     <span class="k">for</span> <span class="k">mapping</span>(<span class="t">int16</span> <span class="op">=></span> <span class="t">uint256</span>);
+    <span class="k">using</span> <span class="t">Position</span>       <span class="k">for</span> <span class="k">mapping</span>(<span class="t">bytes32</span> <span class="op">=></span> <span class="t">Position.Info</span>);
+    <span class="k">using</span> <span class="t">Position</span>       <span class="k">for</span> <span class="t">Position.Info</span>;
+    <span class="k">using</span> <span class="t">Oracle</span>         <span class="k">for</span> <span class="t">Oracle.Observation</span>[<span class="n">65535</span>];
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: Slot0 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-slot0" onclick="activateSection('s-slot0')">
+  <div class="section-header">
+    <div class="section-num">02</div>
+    <div class="section-name">Immutables &amp; Slot0 — The packed price struct</div>
+    <div class="section-hint">uint160 · int24 · uint16 · uint8 · bool</div>
+  </div>
+<pre>    <span class="c">// ─────────────── Immutables (set once in constructor) ─────────────────</span>
+    <span class="k">address</span> <span class="k">public</span> <span class="k">immutable</span> <span class="k">override</span> <span class="p">factory</span>;
+    <span class="k">address</span> <span class="k">public</span> <span class="k">immutable</span> <span class="k">override</span> <span class="p">token0</span>;
+    <span class="k">address</span> <span class="k">public</span> <span class="k">immutable</span> <span class="k">override</span> <span class="p">token1</span>;
+    <span class="t">uint24</span>  <span class="k">public</span> <span class="k">immutable</span> <span class="k">override</span> <span class="p">fee</span>;
+    <span class="t">int24</span>   <span class="k">public</span> <span class="k">immutable</span> <span class="k">override</span> <span class="p">tickSpacing</span>;
+    <span class="t">uint128</span> <span class="k">public</span> <span class="k">immutable</span> <span class="k">override</span> <span class="p">maxLiquidityPerTick</span>;
+
+    <span class="c">// ─────────────── Slot0: single 32-byte storage slot ───────────────────</span>
+    <span class="cd">/// @dev All fields pack into exactly one 256-bit storage word.</span>
+    <span class="cd">/// Reading price, tick, and the reentrancy lock costs ONE cold SLOAD (~2100 gas).</span>
+    <span class="k">struct</span> <span class="t">Slot0</span> {
+        <span class="cd">// Q64.96 fixed-point: actual price = (sqrtPriceX96 / 2^96)^2</span>
+        <span class="cd">// Range covers ~1.5×10^-29 to ~3.4×10^38 (enough for any token pair)</span>
+        <span class="t">uint160</span> <span class="p">sqrtPriceX96</span>;  <span class="c">// 160 bits  — current sqrt(price) * 2^96</span>
+
+        <span class="cd">// floor(log_1.0001(price)) — integer tick for the current price.</span>
+        <span class="cd">// int24 covers ±8,388,607 but pool restricts to ±887,272.</span>
+        <span class="t">int24</span>   <span class="p">tick</span>;           <span class="c">// 24 bits   — current tick index</span>
+
+        <span class="cd">// Index into the observations circular buffer (wraps at cardinality).</span>
+        <span class="t">uint16</span>  <span class="p">observationIndex</span>;        <span class="c">// 16 bits</span>
+
+        <span class="cd">// How many observations slots are currently active (max 65535).</span>
+        <span class="t">uint16</span>  <span class="p">observationCardinality</span>;   <span class="c">// 16 bits</span>
+
+        <span class="cd">// Next cardinality to grow to when an observation is written.</span>
+        <span class="t">uint16</span>  <span class="p">observationCardinalityNext</span>; <span class="c">// 16 bits</span>
+
+        <span class="cd">// Protocol fee: 4 low bits = fee on token0, 4 high bits = fee on token1.</span>
+        <span class="cd">// Value N means the protocol takes 1/N of LP fees. 0 = disabled.</span>
+        <span class="t">uint8</span>   <span class="p">feeProtocol</span>;    <span class="c">// 8 bits</span>
+
+        <span class="cd">// Reentrancy lock — true means a call is in progress.</span>
+        <span class="cd">// Stored in slot0 so the same SLOAD that reads price also reads the lock.</span>
+        <span class="t">bool</span>    <span class="p">unlocked</span>;       <span class="c">// 8 bits  (total = 160+24+16+16+16+8+8 = 248 bits ≤ 256)</span>
+    }
+    <span class="t">Slot0</span> <span class="k">public</span> <span class="k">override</span> <span class="p">slot0</span>;
+
+    <span class="c">// Mutex: reverts if unlocked == false</span>
+    <span class="k">modifier</span> <span class="fn">lock</span>() {
+        <span class="k">require</span>(<span class="p">slot0</span>.<span class="p">unlocked</span>, <span class="s">'LOK'</span>);
+        <span class="p">slot0</span>.<span class="p">unlocked</span> <span class="op">=</span> <span class="k">false</span>;
+        <span class="k">_</span>;
+        <span class="p">slot0</span>.<span class="p">unlocked</span> <span class="op">=</span> <span class="k">true</span>;
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: feeGrowthGlobal -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-feegrowth" onclick="activateSection('s-feegrowth')">
+  <div class="section-header">
+    <div class="section-num">03</div>
+    <div class="section-name">feeGrowthGlobal — Monotonic fee accumulators</div>
+    <div class="section-hint">Q128.128 · per-unit-liquidity · never decreases</div>
+  </div>
+<pre>    <span class="cd">/// @dev Fee accumulated per unit of liquidity over ALL TIME for token0.</span>
+    <span class="cd">/// Stored as Q128.128 fixed point (multiply by 2^128 = FixedPoint128.Q128).</span>
+    <span class="cd">///</span>
+    <span class="cd">/// When a swap moves 1 fee-unit of token0 and active liquidity is L,</span>
+    <span class="cd">/// feeGrowthGlobal0X128 increases by: feeAmount * Q128 / L</span>
+    <span class="cd">///</span>
+    <span class="cd">/// A position's earned fees = (feeGrowthGlobal - feeGrowthInsideAtLastUpdate) * posLiquidity / Q128</span>
+    <span class="t">uint256</span> <span class="k">public</span> <span class="k">override</span> <span class="p">feeGrowthGlobal0X128</span>;
+    <span class="t">uint256</span> <span class="k">public</span> <span class="k">override</span> <span class="p">feeGrowthGlobal1X128</span>;
+
+    <span class="cd">/// @dev Protocol fees owed to the factory owner. Collected via collectProtocol().</span>
+    <span class="k">struct</span> <span class="t">ProtocolFees</span> {
+        <span class="t">uint128</span> <span class="p">token0</span>;
+        <span class="t">uint128</span> <span class="p">token1</span>;
+    }
+    <span class="t">ProtocolFees</span> <span class="k">public</span> <span class="k">override</span> <span class="p">protocolFees</span>;
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: liquidity -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-liquidity" onclick="activateSection('s-liquidity')">
+  <div class="section-header">
+    <div class="section-num">04</div>
+    <div class="section-name">liquidity — Active liquidity in the current tick range</div>
+    <div class="section-hint">uint128 · NOT total deposited</div>
+  </div>
+<pre>    <span class="cd">/// @dev The liquidity currently available to the pool for swaps.</span>
+    <span class="cd">/// IMPORTANT: this is NOT the sum of all LP positions.</span>
+    <span class="cd">/// It is only the liquidity from positions whose tick range contains</span>
+    <span class="cd">/// the current price tick. Out-of-range positions contribute ZERO.</span>
+    <span class="cd">///</span>
+    <span class="cd">/// Updated in two situations:</span>
+    <span class="cd">///   1. mint/burn: when current tick is inside the position range.</span>
+    <span class="cd">///   2. swap: when price crosses a tick boundary (liquidityNet applied).</span>
+    <span class="t">uint128</span> <span class="k">public</span> <span class="k">override</span> <span class="p">liquidity</span>;
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: Mappings: ticks + tickBitmap -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-mappings" onclick="activateSection('s-mappings')">
+  <div class="section-header">
+    <div class="section-num">05</div>
+    <div class="section-name">ticks &amp; tickBitmap — The liquidity bookkeeping engine</div>
+    <div class="section-hint">Tick.Info · int24→int16+uint8</div>
+  </div>
+<pre>    <span class="cd">/// @dev Every INITIALIZED tick stores a Tick.Info:</span>
+    <span class="cd">///</span>
+    <span class="cd">///  liquidityGross  — total liquidity that references this tick as either</span>
+    <span class="cd">///                    lower OR upper boundary. Used to know when to</span>
+    <span class="cd">///                    un-initialize (set to 0 → delete from bitmap).</span>
+    <span class="cd">///</span>
+    <span class="cd">///  liquidityNet    — net change to apply to `liquidity` when the current</span>
+    <span class="cd">///                    price CROSSES this tick during a swap:</span>
+    <span class="cd">///                      +amount when price crosses upward through lowerTick</span>
+    <span class="cd">///                      -amount when price crosses upward through upperTick</span>
+    <span class="cd">///                    (reversed for downward swaps)</span>
+    <span class="cd">///</span>
+    <span class="cd">///  feeGrowthOutside{0,1}X128 — fee growth on the OPPOSITE side of this tick</span>
+    <span class="cd">///                    from the current price. Used to compute feeGrowthInside.</span>
+    <span class="cd">///</span>
+    <span class="cd">///  tickCumulativeOutside, secondsPerLiquidityOutsideX128, secondsOutside</span>
+    <span class="cd">///                    — oracle values on the outside of this tick.</span>
+    <span class="k">mapping</span>(<span class="t">int24</span> <span class="op">=></span> <span class="t">Tick.Info</span>) <span class="k">public</span> <span class="k">override</span> <span class="p">ticks</span>;
+
+    <span class="cd">/// @dev Bitmap of initialized ticks. The full int24 tick space is split:</span>
+    <span class="cd">///   wordPos  = tick / 256   (the mapping key, type int16)</span>
+    <span class="cd">///   bitPos   = tick % 256   (which bit within the word, type uint8)</span>
+    <span class="cd">///</span>
+    <span class="cd">/// A set bit = an initialized tick. nextInitializedTickWithinOneWord() does</span>
+    <span class="cd">/// an efficient bit-scan to find the nearest set bit, letting swaps skip</span>
+    <span class="cd">/// through large uninitiated regions in O(1) per word.</span>
+    <span class="k">mapping</span>(<span class="t">int16</span> <span class="op">=></span> <span class="t">uint256</span>) <span class="k">public</span> <span class="k">override</span> <span class="p">tickBitmap</span>;
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: Positions -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-positions" onclick="activateSection('s-positions')">
+  <div class="section-header">
+    <div class="section-num">06</div>
+    <div class="section-name">positions — LP position storage</div>
+    <div class="section-hint">keccak256(owner, tickLower, tickUpper)</div>
+  </div>
+<pre>    <span class="cd">/// @dev Each LP position is keyed by the keccak256 hash of:</span>
+    <span class="cd">///     (owner address, tickLower, tickUpper)</span>
+    <span class="cd">///</span>
+    <span class="cd">/// Position.Info holds:</span>
+    <span class="cd">///   liquidity              — amount of liquidity the LP has deposited</span>
+    <span class="cd">///   feeGrowthInside0LastX128 — snapshot of fee growth INSIDE the range at last update</span>
+    <span class="cd">///   feeGrowthInside1LastX128 — same for token1</span>
+    <span class="cd">///   tokensOwed0 / tokensOwed1 — uncollected fees, ready to withdraw via collect()</span>
+    <span class="cd">///</span>
+    <span class="cd">/// NoDelegateCall: positions is accessed via the Position library which computes</span>
+    <span class="cd">/// the key internally — callers pass (owner, lower, upper), not the hash.</span>
+    <span class="k">mapping</span>(<span class="t">bytes32</span> <span class="op">=></span> <span class="t">Position.Info</span>) <span class="k">public</span> <span class="k">override</span> <span class="p">positions</span>;
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: Observations (TWAP oracle) -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-observations" onclick="activateSection('s-observations')">
+  <div class="section-header">
+    <div class="section-num">07</div>
+    <div class="section-name">observations — On-chain TWAP oracle</div>
+    <div class="section-hint">circular buffer · 65535 slots · tickCumulative</div>
+  </div>
+<pre>    <span class="cd">/// @dev Fixed-size circular buffer of Oracle.Observation entries.</span>
+    <span class="cd">/// Each entry records a checkpoint of the cumulative price at a block timestamp.</span>
+    <span class="cd">///</span>
+    <span class="cd">/// Oracle.Observation contains:</span>
+    <span class="cd">///   blockTimestamp          — uint32 (wraps every ~136 years)</span>
+    <span class="cd">///   tickCumulative          — int56: ∑ tick * Δseconds since pool creation</span>
+    <span class="cd">///   secondsPerLiquidityX128 — uint160: ∑ Δseconds/liquidity since creation</span>
+    <span class="cd">///   initialized             — bool: true if this slot has been written</span>
+    <span class="cd">///</span>
+    <span class="cd">/// TWAP for a window [T0, T1]:</span>
+    <span class="cd">///   avgTick = (tickCumulative[T1] - tickCumulative[T0]) / (T1 - T0)</span>
+    <span class="cd">///   avgPrice = 1.0001 ^ avgTick</span>
+    <span class="cd">///</span>
+    <span class="cd">/// By default only slot[0] is active (cardinality = 1). Call</span>
+    <span class="cd">/// increaseObservationCardinalityNext() to expand — each extra slot</span>
+    <span class="cd">/// costs ~20,000 gas to initialize (paid by whoever calls the function).</span>
+    <span class="t">Oracle.Observation</span>[<span class="n">65535</span>] <span class="k">public</span> <span class="k">override</span> <span class="p">observations</span>;
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: Constructor -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-constructor" onclick="activateSection('s-constructor')">
+  <div class="section-header">
+    <div class="section-num">08</div>
+    <div class="section-name">constructor() — Reads params from factory deployer</div>
+    <div class="section-hint">IUniswapV3PoolDeployer.parameters()</div>
+  </div>
+<pre>    <span class="cd">/// @notice The pool is never deployed directly — always via UniswapV3Factory</span>
+    <span class="cd">/// using CREATE2 with salt = keccak256(token0, token1, fee).</span>
+    <span class="cd">///</span>
+    <span class="cd">/// Parameters are NOT passed as constructor arguments (that would change</span>
+    <span class="cd">/// the bytecode and thus the CREATE2 address). Instead, the factory</span>
+    <span class="cd">/// temporarily stores them and this constructor reads them back.</span>
+    <span class="k">constructor</span>() {
+        <span class="t">int24</span> <span class="p">_tickSpacing</span>;
+        (
+            <span class="p">factory</span>,
+            <span class="p">token0</span>,
+            <span class="p">token1</span>,
+            <span class="p">fee</span>,
+            <span class="p">_tickSpacing</span>
+        ) <span class="op">=</span> <span class="t">IUniswapV3PoolDeployer</span>(<span class="k">msg.sender</span>).<span class="fn">parameters</span>();
+
+        <span class="p">tickSpacing</span> <span class="op">=</span> <span class="p">_tickSpacing</span>;
+
+        <span class="cd">// Pre-compute maximum liquidity per tick to prevent overflow in liquidityGross.</span>
+        <span class="cd">// Derived from: max(uint128) / number_of_ticks_in_range</span>
+        <span class="p">maxLiquidityPerTick</span> <span class="op">=</span> <span class="t">Tick</span>.<span class="fn">tickSpacingToMaxLiquidityPerTick</span>(<span class="p">_tickSpacing</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: initialize -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-initialize" onclick="activateSection('s-initialize')">
+  <div class="section-header">
+    <div class="section-num">09</div>
+    <div class="section-name">initialize() — Set starting price; must be called before any swap or mint</div>
+    <div class="section-hint">sqrtPriceX96 → tick · first observation written</div>
+  </div>
+<pre>    <span class="cd">/// @notice Sets the initial sqrt price and activates the pool.</span>
+    <span class="cd">/// @param sqrtPriceX96 The initial sqrt(price) in Q64.96 format.</span>
+    <span class="cd">///        e.g. to start at price 2000 (USDC per ETH): sqrt(2000) * 2^96</span>
+    <span class="k">function</span> <span class="fn">initialize</span>(<span class="t">uint160</span> <span class="p">sqrtPriceX96</span>) <span class="k">external</span> <span class="k">override</span> {
+        <span class="cd">// Prevent double-initialization</span>
+        <span class="k">require</span>(<span class="p">slot0</span>.<span class="p">sqrtPriceX96</span> <span class="op">==</span> <span class="n">0</span>, <span class="s">'AI'</span>);  <span class="c">// Already Initialized</span>
+
+        <span class="cd">// Derive tick from the provided sqrt price.</span>
+        <span class="cd">// TickMath.getTickAtSqrtRatio does: floor(log_1.0001(price))</span>
+        <span class="t">int24</span> <span class="p">tick</span> <span class="op">=</span> <span class="t">TickMath</span>.<span class="fn">getTickAtSqrtRatio</span>(<span class="p">sqrtPriceX96</span>);
+
+        <span class="cd">// Write the first oracle observation (timestamp, tickCumulative=0, spls=0)</span>
+        <span class="t">uint16</span> <span class="p">cardinality</span>;
+        <span class="t">uint16</span> <span class="p">cardinalityNext</span>;
+        (<span class="p">cardinality</span>, <span class="p">cardinalityNext</span>) <span class="op">=</span> <span class="p">observations</span>.<span class="fn">initialize</span>(<span class="fn">_blockTimestamp</span>());
+
+        <span class="cd">// Pack everything into slot0.  unlocked = true opens the pool for business.</span>
+        <span class="p">slot0</span> <span class="op">=</span> <span class="t">Slot0</span>({
+            <span class="p">sqrtPriceX96</span>               : <span class="p">sqrtPriceX96</span>,
+            <span class="p">tick</span>                       : <span class="p">tick</span>,
+            <span class="p">observationIndex</span>           : <span class="n">0</span>,
+            <span class="p">observationCardinality</span>     : <span class="p">cardinality</span>,
+            <span class="p">observationCardinalityNext</span> : <span class="p">cardinalityNext</span>,
+            <span class="p">feeProtocol</span>               : <span class="n">0</span>,
+            <span class="p">unlocked</span>                  : <span class="k">true</span>
+        });
+
+        <span class="k">emit</span> <span class="ev">Initialize</span>(<span class="p">sqrtPriceX96</span>, <span class="p">tick</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: _updatePosition -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-update-pos" onclick="activateSection('s-update-pos')">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <div class="section-name">_updatePosition() — Core bookkeeping shared by mint &amp; burn</div>
+    <div class="section-hint">tick init/destroy · feeGrowthInside · tokensOwed</div>
+  </div>
+<pre>    <span class="cd">/// @dev Private helper. Updates ticks, computes fees owed, mutates the position.</span>
+    <span class="k">function</span> <span class="fn">_updatePosition</span>(
+        <span class="k">address</span>  <span class="p">owner</span>,
+        <span class="t">int24</span>    <span class="p">tickLower</span>,
+        <span class="t">int24</span>    <span class="p">tickUpper</span>,
+        <span class="t">int128</span>   <span class="p">liquidityDelta</span>, <span class="c">// positive = mint, negative = burn</span>
+        <span class="t">int24</span>    <span class="p">tick</span>            <span class="c">// current tick from slot0</span>
+    ) <span class="k">private</span> <span class="k">returns</span> (<span class="t">Position.Info</span> <span class="k">storage</span> <span class="p">position</span>) {
+        <span class="p">position</span> <span class="op">=</span> <span class="p">positions</span>.<span class="fn">get</span>(<span class="p">owner</span>, <span class="p">tickLower</span>, <span class="p">tickUpper</span>);
+
+        <span class="c">// Snapshot global fee growth before any state changes</span>
+        <span class="t">uint256</span> <span class="p">_feeGrowthGlobal0X128</span> <span class="op">=</span> <span class="p">feeGrowthGlobal0X128</span>;
+        <span class="t">uint256</span> <span class="p">_feeGrowthGlobal1X128</span> <span class="op">=</span> <span class="p">feeGrowthGlobal1X128</span>;
+
+        <span class="c">// Update lower tick if liquidity changed</span>
+        <span class="t">bool</span> <span class="p">flippedLower</span>;
+        <span class="t">bool</span> <span class="p">flippedUpper</span>;
+        <span class="k">if</span> (<span class="p">liquidityDelta</span> <span class="op">!=</span> <span class="n">0</span>) {
+            <span class="t">uint32</span> <span class="p">time</span> <span class="op">=</span> <span class="fn">_blockTimestamp</span>();
+            (<span class="t">int56</span> <span class="p">tickCumulative</span>, <span class="t">uint160</span> <span class="p">secondsPerLiquidityX128</span>) <span class="op">=</span>
+                <span class="p">observations</span>.<span class="fn">observeSingle</span>(<span class="p">time</span>, <span class="n">0</span>, <span class="p">slot0</span>.<span class="p">tick</span>, <span class="p">slot0</span>.<span class="p">observationIndex</span>,
+                    <span class="p">liquidity</span>, <span class="p">slot0</span>.<span class="p">observationCardinality</span>);
+
+            <span class="cd">// ticks.update returns true if the tick just flipped:</span>
+            <span class="cd">// initialized→uninitialized (liquidityGross hit 0) or vice versa</span>
+            <span class="p">flippedLower</span> <span class="op">=</span> <span class="p">ticks</span>.<span class="fn">update</span>(
+                <span class="p">tickLower</span>, <span class="p">tick</span>, <span class="p">liquidityDelta</span>,
+                <span class="p">_feeGrowthGlobal0X128</span>, <span class="p">_feeGrowthGlobal1X128</span>,
+                <span class="p">secondsPerLiquidityX128</span>, <span class="p">tickCumulative</span>, <span class="p">time</span>,
+                <span class="k">false</span>, <span class="c">/* isUpper = false */</span>
+                <span class="p">maxLiquidityPerTick</span>
+            );
+            <span class="p">flippedUpper</span> <span class="op">=</span> <span class="p">ticks</span>.<span class="fn">update</span>(
+                <span class="p">tickUpper</span>, <span class="p">tick</span>, <span class="p">liquidityDelta</span>,
+                <span class="p">_feeGrowthGlobal0X128</span>, <span class="p">_feeGrowthGlobal1X128</span>,
+                <span class="p">secondsPerLiquidityX128</span>, <span class="p">tickCumulative</span>, <span class="p">time</span>,
+                <span class="k">true</span>, <span class="c">/* isUpper = true */</span>
+                <span class="p">maxLiquidityPerTick</span>
+            );
+
+            <span class="cd">// If a tick was newly initialized, set its bit in the bitmap.</span>
+            <span class="cd">// If it was de-initialized (liquidityGross = 0), clear the bit.</span>
+            <span class="k">if</span> (<span class="p">flippedLower</span>) <span class="p">tickBitmap</span>.<span class="fn">flipTick</span>(<span class="p">tickLower</span>, <span class="p">tickSpacing</span>);
+            <span class="k">if</span> (<span class="p">flippedUpper</span>) <span class="p">tickBitmap</span>.<span class="fn">flipTick</span>(<span class="p">tickUpper</span>, <span class="p">tickSpacing</span>);
+        }
+
+        <span class="cd">// Compute fee growth INSIDE the position's tick range.</span>
+        <span class="cd">// feeGrowthInside = feeGrowthGlobal - feeGrowthBelow(lower) - feeGrowthAbove(upper)</span>
+        <span class="cd">// Each boundary's "outside" value flips when price crosses it.</span>
+        (<span class="t">uint256</span> <span class="p">feeGrowthInside0X128</span>, <span class="t">uint256</span> <span class="p">feeGrowthInside1X128</span>) <span class="op">=</span>
+            <span class="p">ticks</span>.<span class="fn">getFeeGrowthInside</span>(
+                <span class="p">tickLower</span>, <span class="p">tickUpper</span>, <span class="p">tick</span>,
+                <span class="p">_feeGrowthGlobal0X128</span>, <span class="p">_feeGrowthGlobal1X128</span>
+            );
+
+        <span class="cd">// Update the position: accumulate new fees into tokensOwed, update snapshot.</span>
+        <span class="p">position</span>.<span class="fn">update</span>(<span class="p">liquidityDelta</span>, <span class="p">feeGrowthInside0X128</span>, <span class="p">feeGrowthInside1X128</span>);
+
+        <span class="cd">// If the position was completely closed and the tick had no other references,</span>
+        <span class="cd">// clear the tick's storage to recover gas (and get a gas refund).</span>
+        <span class="k">if</span> (<span class="p">liquidityDelta</span> <span class="op"><</span> <span class="n">0</span>) {
+            <span class="k">if</span> (<span class="p">flippedLower</span>) <span class="p">ticks</span>.<span class="fn">clear</span>(<span class="p">tickLower</span>);
+            <span class="k">if</span> (<span class="p">flippedUpper</span>) <span class="p">ticks</span>.<span class="fn">clear</span>(<span class="p">tickUpper</span>);
+        }
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: mint -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-mint" onclick="activateSection('s-mint')">
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <div class="section-name">mint() — Add liquidity to a tick range</div>
+    <div class="section-hint">callback pattern · SqrtPriceMath · balance check</div>
+  </div>
+<pre>    <span class="cd">/// @notice Adds liquidity for msg.sender in [tickLower, tickUpper).</span>
+    <span class="cd">/// @param recipient   Address that will own the position.</span>
+    <span class="cd">/// @param tickLower   Lower tick boundary (must be multiple of tickSpacing).</span>
+    <span class="cd">/// @param tickUpper   Upper tick boundary.</span>
+    <span class="cd">/// @param amount      Liquidity units to add (NOT token amounts).</span>
+    <span class="cd">/// @param data        Forwarded to the IUniswapV3MintCallback.</span>
+    <span class="cd">/// @return amount0    token0 actually deposited.</span>
+    <span class="cd">/// @return amount1    token1 actually deposited.</span>
+    <span class="k">function</span> <span class="fn">mint</span>(
+        <span class="k">address</span>   <span class="p">recipient</span>,
+        <span class="t">int24</span>     <span class="p">tickLower</span>,
+        <span class="t">int24</span>     <span class="p">tickUpper</span>,
+        <span class="t">uint128</span>   <span class="p">amount</span>,
+        <span class="t">bytes</span> <span class="k">calldata</span> <span class="p">data</span>
+    ) <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span> <span class="m">noDelegateCall</span>
+      <span class="k">returns</span> (<span class="t">uint256</span> <span class="p">amount0</span>, <span class="t">uint256</span> <span class="p">amount1</span>)
+    {
+        <span class="k">require</span>(<span class="p">amount</span> <span class="op">></span> <span class="n">0</span>);
+        (, <span class="t">int256</span> <span class="p">amount0Int</span>, <span class="t">int256</span> <span class="p">amount1Int</span>) <span class="op">=</span>
+            <span class="fn">_modifyPosition</span>(<span class="t">ModifyPositionParams</span>({
+                <span class="p">owner</span>          : <span class="p">recipient</span>,
+                <span class="p">tickLower</span>      : <span class="p">tickLower</span>,
+                <span class="p">tickUpper</span>      : <span class="p">tickUpper</span>,
+                <span class="p">liquidityDelta</span> : <span class="t">int256</span>(<span class="p">amount</span>).<span class="fn">toInt128</span>()
+            }));
+
+        <span class="cd">// _modifyPosition returns signed amounts; for mint they are always positive.</span>
+        <span class="p">amount0</span> <span class="op">=</span> <span class="t">uint256</span>(<span class="p">amount0Int</span>);
+        <span class="p">amount1</span> <span class="op">=</span> <span class="t">uint256</span>(<span class="p">amount1Int</span>);
+
+        <span class="cd">// Snapshot balances BEFORE calling the callback.</span>
+        <span class="cd">// Pattern: optimistically trust the caller, then verify.</span>
+        <span class="t">uint256</span> <span class="p">balance0Before</span>;
+        <span class="t">uint256</span> <span class="p">balance1Before</span>;
+        <span class="k">if</span> (<span class="p">amount0</span> <span class="op">></span> <span class="n">0</span>) <span class="p">balance0Before</span> <span class="op">=</span> <span class="fn">balance0</span>();
+        <span class="k">if</span> (<span class="p">amount1</span> <span class="op">></span> <span class="n">0</span>) <span class="p">balance1Before</span> <span class="op">=</span> <span class="fn">balance1</span>();
+
+        <span class="cd">// Callback: caller must transfer amount0 and amount1 into this contract.</span>
+        <span class="cd">// This is where NonfungiblePositionManager (or any router) sends the tokens.</span>
+        <span class="t">IUniswapV3MintCallback</span>(<span class="k">msg.sender</span>).<span class="fn">uniswapV3MintCallback</span>(
+            <span class="p">amount0</span>, <span class="p">amount1</span>, <span class="p">data</span>
+        );
+
+        <span class="cd">// Verify the callback actually transferred the tokens. This is the</span>
+        <span class="cd">// safety check that prevents anyone from minting without paying.</span>
+        <span class="k">if</span> (<span class="p">amount0</span> <span class="op">></span> <span class="n">0</span>)
+            <span class="k">require</span>(<span class="fn">balance0</span>() <span class="op">>=</span> <span class="p">balance0Before</span> <span class="op">+</span> <span class="p">amount0</span>, <span class="s">'M0'</span>);
+        <span class="k">if</span> (<span class="p">amount1</span> <span class="op">></span> <span class="n">0</span>)
+            <span class="k">require</span>(<span class="fn">balance1</span>() <span class="op">>=</span> <span class="p">balance1Before</span> <span class="op">+</span> <span class="p">amount1</span>, <span class="s">'M1'</span>);
+
+        <span class="k">emit</span> <span class="ev">Mint</span>(<span class="k">msg.sender</span>, <span class="p">recipient</span>, <span class="p">tickLower</span>, <span class="p">tickUpper</span>, <span class="p">amount</span>, <span class="p">amount0</span>, <span class="p">amount1</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: collect -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-collect" onclick="activateSection('s-collect')">
+  <div class="section-header">
+    <div class="section-num">12</div>
+    <div class="section-name">collect() — Withdraw accumulated fees from a position</div>
+    <div class="section-hint">tokensOwed · no callback · capped amounts</div>
+  </div>
+<pre>    <span class="cd">/// @notice Collects tokens owed to a position (fees + withdrawn principal).</span>
+    <span class="cd">/// @dev Does NOT update feeGrowthInside — call burn(0) first if you want</span>
+    <span class="cd">///      to collect fees that accrued since the last update.</span>
+    <span class="k">function</span> <span class="fn">collect</span>(
+        <span class="k">address</span>   <span class="p">recipient</span>,
+        <span class="t">int24</span>     <span class="p">tickLower</span>,
+        <span class="t">int24</span>     <span class="p">tickUpper</span>,
+        <span class="t">uint128</span>   <span class="p">amount0Requested</span>,
+        <span class="t">uint128</span>   <span class="p">amount1Requested</span>
+    ) <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span>
+      <span class="k">returns</span> (<span class="t">uint128</span> <span class="p">amount0</span>, <span class="t">uint128</span> <span class="p">amount1</span>)
+    {
+        <span class="cd">// Load position from storage (msg.sender is the position owner).</span>
+        <span class="t">Position.Info</span> <span class="k">storage</span> <span class="p">position</span> <span class="op">=</span> <span class="p">positions</span>.<span class="fn">get</span>(
+            <span class="k">msg.sender</span>, <span class="p">tickLower</span>, <span class="p">tickUpper</span>
+        );
+
+        <span class="cd">// Cap at what is actually owed — caller may request type(uint128).max to mean "all".</span>
+        <span class="p">amount0</span> <span class="op">=</span> <span class="p">amount0Requested</span> <span class="op">></span> <span class="p">position</span>.<span class="p">tokensOwed0</span>
+            <span class="op">?</span> <span class="p">position</span>.<span class="p">tokensOwed0</span>
+            : <span class="p">amount0Requested</span>;
+        <span class="p">amount1</span> <span class="op">=</span> <span class="p">amount1Requested</span> <span class="op">></span> <span class="p">position</span>.<span class="p">tokensOwed1</span>
+            <span class="op">?</span> <span class="p">position</span>.<span class="p">tokensOwed1</span>
+            : <span class="p">amount1Requested</span>;
+
+        <span class="cd">// Decrement owed amounts. Unchecked: amounts are capped above.</span>
+        <span class="k">if</span> (<span class="p">amount0</span> <span class="op">></span> <span class="n">0</span>) {
+            <span class="p">position</span>.<span class="p">tokensOwed0</span> <span class="op">-=</span> <span class="p">amount0</span>;
+            <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token0</span>, <span class="p">recipient</span>, <span class="p">amount0</span>);
+        }
+        <span class="k">if</span> (<span class="p">amount1</span> <span class="op">></span> <span class="n">0</span>) {
+            <span class="p">position</span>.<span class="p">tokensOwed1</span> <span class="op">-=</span> <span class="p">amount1</span>;
+            <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token1</span>, <span class="p">recipient</span>, <span class="p">amount1</span>);
+        }
+
+        <span class="k">emit</span> <span class="ev">Collect</span>(<span class="k">msg.sender</span>, <span class="p">recipient</span>, <span class="p">tickLower</span>, <span class="p">tickUpper</span>, <span class="p">amount0</span>, <span class="p">amount1</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: burn -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-burn" onclick="activateSection('s-burn')">
+  <div class="section-header">
+    <div class="section-num">13</div>
+    <div class="section-name">burn() — Remove liquidity; credit tokens to position</div>
+    <div class="section-hint">negative liquidityDelta · collect() to withdraw</div>
+  </div>
+<pre>    <span class="cd">/// @notice Burns liquidity and credits tokens back to the position's tokensOwed.</span>
+    <span class="cd">/// @dev Tokens are NOT sent here — you must call collect() afterwards.</span>
+    <span class="cd">///      Calling burn(0) is a valid no-op that triggers a fee update only.</span>
+    <span class="k">function</span> <span class="fn">burn</span>(
+        <span class="t">int24</span>   <span class="p">tickLower</span>,
+        <span class="t">int24</span>   <span class="p">tickUpper</span>,
+        <span class="t">uint128</span> <span class="p">amount</span>
+    ) <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span> <span class="m">noDelegateCall</span>
+      <span class="k">returns</span> (<span class="t">uint256</span> <span class="p">amount0</span>, <span class="t">uint256</span> <span class="p">amount1</span>)
+    {
+        (<span class="t">Position.Info</span> <span class="k">storage</span> <span class="p">position</span>, <span class="t">int256</span> <span class="p">amount0Int</span>, <span class="t">int256</span> <span class="p">amount1Int</span>) <span class="op">=</span>
+            <span class="fn">_modifyPosition</span>(<span class="t">ModifyPositionParams</span>({
+                <span class="p">owner</span>          : <span class="k">msg.sender</span>,
+                <span class="p">tickLower</span>      : <span class="p">tickLower</span>,
+                <span class="p">tickUpper</span>      : <span class="p">tickUpper</span>,
+                <span class="p">liquidityDelta</span> : <span class="op">-</span><span class="t">int256</span>(<span class="p">amount</span>).<span class="fn">toInt128</span>()
+            }));
+
+        <span class="cd">// Negate because _modifyPosition returns negative values for burn.</span>
+        <span class="p">amount0</span> <span class="op">=</span> <span class="t">uint256</span>(<span class="op">-</span><span class="p">amount0Int</span>);
+        <span class="p">amount1</span> <span class="op">=</span> <span class="t">uint256</span>(<span class="op">-</span><span class="p">amount1Int</span>);
+
+        <span class="cd">// Credit the owed amounts into the position so collect() can withdraw them.</span>
+        <span class="cd">// tokensOwed is uint128, so safe-cast from uint256.</span>
+        <span class="k">if</span> (<span class="p">amount0</span> <span class="op">></span> <span class="n">0</span> <span class="op">||</span> <span class="p">amount1</span> <span class="op">></span> <span class="n">0</span>) {
+            (<span class="p">position</span>.<span class="p">tokensOwed0</span>, <span class="p">position</span>.<span class="p">tokensOwed1</span>) <span class="op">=</span> (
+                <span class="p">position</span>.<span class="p">tokensOwed0</span> <span class="op">+</span> <span class="t">uint128</span>(<span class="p">amount0</span>),
+                <span class="p">position</span>.<span class="p">tokensOwed1</span> <span class="op">+</span> <span class="t">uint128</span>(<span class="p">amount1</span>)
+            );
+        }
+        <span class="k">emit</span> <span class="ev">Burn</span>(<span class="k">msg.sender</span>, <span class="p">tickLower</span>, <span class="p">tickUpper</span>, <span class="p">amount</span>, <span class="p">amount0</span>, <span class="p">amount1</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: swap -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-swap" onclick="activateSection('s-swap')">
+  <div class="section-header">
+    <div class="section-num">14</div>
+    <div class="section-name">swap() — The core function. Step through ticks, compute amounts, call back</div>
+    <div class="section-hint">SwapMath · tick crossing · oracle write · callback</div>
+  </div>
+<pre>    <span class="cd">/// @notice Swap token0 for token1, or token1 for token0.</span>
+    <span class="cd">/// @param recipient      Receives the output tokens.</span>
+    <span class="cd">/// @param zeroForOne     true = swap token0→token1 (price goes DOWN).</span>
+    <span class="cd">/// @param amountSpecified Positive = exact input, Negative = exact output.</span>
+    <span class="cd">/// @param sqrtPriceLimitX96  Price cannot move past this limit. Acts as slippage guard.</span>
+    <span class="cd">/// @param data           Forwarded to IUniswapV3SwapCallback.</span>
+    <span class="k">function</span> <span class="fn">swap</span>(
+        <span class="k">address</span>   <span class="p">recipient</span>,
+        <span class="t">bool</span>      <span class="p">zeroForOne</span>,
+        <span class="t">int256</span>    <span class="p">amountSpecified</span>,
+        <span class="t">uint160</span>   <span class="p">sqrtPriceLimitX96</span>,
+        <span class="t">bytes</span> <span class="k">calldata</span> <span class="p">data</span>
+    ) <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span> <span class="m">noDelegateCall</span>
+      <span class="k">returns</span> (<span class="t">int256</span> <span class="p">amount0</span>, <span class="t">int256</span> <span class="p">amount1</span>)
+    {
+        <span class="k">require</span>(<span class="p">amountSpecified</span> <span class="op">!=</span> <span class="n">0</span>, <span class="s">'AS'</span>);
+
+        <span class="cd">// Cache slot0 to avoid repeated SLOADs inside the loop.</span>
+        <span class="t">Slot0</span> <span class="k">memory</span> <span class="p">slot0Start</span> <span class="op">=</span> <span class="p">slot0</span>;
+
+        <span class="cd">// Validate price limit: must be between current price and the appropriate extreme.</span>
+        <span class="k">require</span>(
+            <span class="p">zeroForOne</span>
+                <span class="op">?</span> <span class="p">sqrtPriceLimitX96</span> <span class="op"><</span> <span class="p">slot0Start</span>.<span class="p">sqrtPriceX96</span>
+                    <span class="op">&&</span> <span class="p">sqrtPriceLimitX96</span> <span class="op">></span> <span class="t">TickMath</span>.<span class="p">MIN_SQRT_RATIO</span>
+                : <span class="p">sqrtPriceLimitX96</span> <span class="op">></span> <span class="p">slot0Start</span>.<span class="p">sqrtPriceX96</span>
+                    <span class="op">&&</span> <span class="p">sqrtPriceLimitX96</span> <span class="op"><</span> <span class="t">TickMath</span>.<span class="p">MAX_SQRT_RATIO</span>,
+            <span class="s">'SPL'</span>
+        );
+
+        <span class="cd">// Cache fee protocol split to local var.</span>
+        <span class="t">bool</span> <span class="p">exactInput</span> <span class="op">=</span> <span class="p">amountSpecified</span> <span class="op">></span> <span class="n">0</span>;
+
+        <span class="cd">// ── Swap state: tracks progress across tick-crossing iterations ────────</span>
+        <span class="k">struct</span> <span class="t">SwapState</span> {
+            <span class="t">int256</span>  <span class="p">amountSpecifiedRemaining</span>; <span class="c">// how much is left to fill</span>
+            <span class="t">int256</span>  <span class="p">amountCalculated</span>;         <span class="c">// cumulative output (or input for exactOutput)</span>
+            <span class="t">uint160</span> <span class="p">sqrtPriceX96</span>;             <span class="c">// current sqrt price (moves during swap)</span>
+            <span class="t">int24</span>   <span class="p">tick</span>;                     <span class="c">// current tick</span>
+            <span class="t">uint256</span> <span class="p">feeGrowthGlobalX128</span>;      <span class="c">// accumulates fee growth for the swap direction</span>
+            <span class="t">uint128</span> <span class="p">protocolFee</span>;              <span class="c">// protocol's cut so far</span>
+            <span class="t">uint128</span> <span class="p">liquidity</span>;                <span class="c">// current active liquidity</span>
+        }
+
+        <span class="t">SwapState</span> <span class="k">memory</span> <span class="p">state</span> <span class="op">=</span> <span class="t">SwapState</span>({
+            <span class="p">amountSpecifiedRemaining</span>: <span class="p">amountSpecified</span>,
+            <span class="p">amountCalculated</span>        : <span class="n">0</span>,
+            <span class="p">sqrtPriceX96</span>           : <span class="p">slot0Start</span>.<span class="p">sqrtPriceX96</span>,
+            <span class="p">tick</span>                   : <span class="p">slot0Start</span>.<span class="p">tick</span>,
+            <span class="p">feeGrowthGlobalX128</span>    : <span class="p">zeroForOne</span> <span class="op">?</span> <span class="p">feeGrowthGlobal0X128</span> : <span class="p">feeGrowthGlobal1X128</span>,
+            <span class="p">protocolFee</span>            : <span class="n">0</span>,
+            <span class="p">liquidity</span>              : <span class="p">liquidity</span>
+        });
+
+        <span class="cd">// ═══════════════════════════════════════════════════════════════════</span>
+        <span class="cd">// THE MAIN LOOP — steps through one tick at a time until the swap</span>
+        <span class="cd">// is filled, the price limit is hit, or no more ticks exist.</span>
+        <span class="cd">// ═══════════════════════════════════════════════════════════════════</span>
+        <span class="k">while</span> (
+            <span class="p">state</span>.<span class="p">amountSpecifiedRemaining</span> <span class="op">!=</span> <span class="n">0</span>
+            <span class="op">&&</span> <span class="p">state</span>.<span class="p">sqrtPriceX96</span> <span class="op">!=</span> <span class="p">sqrtPriceLimitX96</span>
+        ) {
+            <span class="k">struct</span> <span class="t">StepComputations</span> {
+                <span class="t">uint160</span> <span class="p">sqrtPriceStartX96</span>;  <span class="c">// price at step start</span>
+                <span class="t">int24</span>   <span class="p">tickNext</span>;            <span class="c">// next initialized tick in swap direction</span>
+                <span class="t">bool</span>    <span class="p">initialized</span>;         <span class="c">// whether tickNext is actually initialized</span>
+                <span class="t">uint160</span> <span class="p">sqrtPriceNextX96</span>;   <span class="c">// sqrt price at tickNext</span>
+                <span class="t">uint256</span> <span class="p">amountIn</span>;            <span class="c">// input consumed in this step</span>
+                <span class="t">uint256</span> <span class="p">amountOut</span>;           <span class="c">// output generated in this step</span>
+                <span class="t">uint256</span> <span class="p">feeAmount</span>;           <span class="c">// fee in this step</span>
+            }
+            <span class="t">StepComputations</span> <span class="k">memory</span> <span class="p">step</span>;
+
+            <span class="p">step</span>.<span class="p">sqrtPriceStartX96</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">sqrtPriceX96</span>;
+
+            <span class="cd">// ── 1. Find the next initialized tick in the swap direction ────────</span>
+            <span class="cd">// TickBitmap.nextInitializedTickWithinOneWord() does a masked bit-scan</span>
+            <span class="cd">// on a single 256-bit word, returning the nearest set bit.</span>
+            (<span class="p">step</span>.<span class="p">tickNext</span>, <span class="p">step</span>.<span class="p">initialized</span>) <span class="op">=</span>
+                <span class="p">tickBitmap</span>.<span class="fn">nextInitializedTickWithinOneWord</span>(
+                    <span class="p">state</span>.<span class="p">tick</span>, <span class="p">tickSpacing</span>, <span class="p">zeroForOne</span>
+                );
+
+            <span class="cd">// Clamp to valid range (avoid extreme ticks that have no price)</span>
+            <span class="k">if</span> (<span class="p">step</span>.<span class="p">tickNext</span> <span class="op"><</span> <span class="t">TickMath</span>.<span class="p">MIN_TICK</span>) <span class="p">step</span>.<span class="p">tickNext</span> <span class="op">=</span> <span class="t">TickMath</span>.<span class="p">MIN_TICK</span>;
+            <span class="k">if</span> (<span class="p">step</span>.<span class="p">tickNext</span> <span class="op">></span> <span class="t">TickMath</span>.<span class="p">MAX_TICK</span>) <span class="p">step</span>.<span class="p">tickNext</span> <span class="op">=</span> <span class="t">TickMath</span>.<span class="p">MAX_TICK</span>;
+
+            <span class="cd">// Convert tick to sqrt price for SwapMath</span>
+            <span class="p">step</span>.<span class="p">sqrtPriceNextX96</span> <span class="op">=</span> <span class="t">TickMath</span>.<span class="fn">getSqrtRatioAtTick</span>(<span class="p">step</span>.<span class="p">tickNext</span>);
+
+            <span class="cd">// ── 2. Compute how much can be swapped before hitting tickNext ─────</span>
+            <span class="cd">// SwapMath.computeSwapStep returns the new sqrt price, amounts, and fee.</span>
+            <span class="cd">// It clamps to sqrtPriceLimitX96 if that is hit first.</span>
+            (
+                <span class="p">state</span>.<span class="p">sqrtPriceX96</span>,
+                <span class="p">step</span>.<span class="p">amountIn</span>,
+                <span class="p">step</span>.<span class="p">amountOut</span>,
+                <span class="p">step</span>.<span class="p">feeAmount</span>
+            ) <span class="op">=</span> <span class="t">SwapMath</span>.<span class="fn">computeSwapStep</span>(
+                <span class="p">state</span>.<span class="p">sqrtPriceX96</span>,
+                (<span class="p">zeroForOne</span>
+                    <span class="op">?</span> <span class="p">step</span>.<span class="p">sqrtPriceNextX96</span> <span class="op"><</span> <span class="p">sqrtPriceLimitX96</span>
+                    : <span class="p">step</span>.<span class="p">sqrtPriceNextX96</span> <span class="op">></span> <span class="p">sqrtPriceLimitX96</span>)
+                    <span class="op">?</span> <span class="p">sqrtPriceLimitX96</span>
+                    : <span class="p">step</span>.<span class="p">sqrtPriceNextX96</span>,
+                <span class="p">state</span>.<span class="p">liquidity</span>,
+                <span class="p">state</span>.<span class="p">amountSpecifiedRemaining</span>,
+                <span class="p">fee</span>
+            );
+
+            <span class="cd">// ── 3. Update remaining amount and fee growth ──────────────────────</span>
+            <span class="k">if</span> (<span class="p">exactInput</span>) {
+                <span class="p">state</span>.<span class="p">amountSpecifiedRemaining</span> <span class="op">-=</span> (<span class="p">step</span>.<span class="p">amountIn</span> <span class="op">+</span> <span class="p">step</span>.<span class="p">feeAmount</span>).<span class="fn">toInt256</span>();
+                <span class="p">state</span>.<span class="p">amountCalculated</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">amountCalculated</span>.<span class="fn">sub</span>(<span class="p">step</span>.<span class="p">amountOut</span>.<span class="fn">toInt256</span>());
+            } <span class="k">else</span> {
+                <span class="p">state</span>.<span class="p">amountSpecifiedRemaining</span> <span class="op">+=</span> <span class="p">step</span>.<span class="p">amountOut</span>.<span class="fn">toInt256</span>();
+                <span class="p">state</span>.<span class="p">amountCalculated</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">amountCalculated</span>.<span class="fn">add</span>(
+                    (<span class="p">step</span>.<span class="p">amountIn</span> <span class="op">+</span> <span class="p">step</span>.<span class="p">feeAmount</span>).<span class="fn">toInt256</span>()
+                );
+            }
+
+            <span class="cd">// Split fee: protocol portion goes to protocolFees, rest to LP fee growth.</span>
+            <span class="t">uint256</span> <span class="p">feeProtocol</span> <span class="op">=</span> <span class="p">zeroForOne</span>
+                <span class="op">?</span> <span class="p">slot0Start</span>.<span class="p">feeProtocol</span> <span class="op">%</span> <span class="n">16</span>
+                : <span class="p">slot0Start</span>.<span class="p">feeProtocol</span> <span class="op">>></span> <span class="n">4</span>;
+
+            <span class="k">if</span> (<span class="p">feeProtocol</span> <span class="op">></span> <span class="n">0</span>) {
+                <span class="t">uint256</span> <span class="p">delta</span> <span class="op">=</span> <span class="p">step</span>.<span class="p">feeAmount</span> <span class="op">/</span> <span class="p">feeProtocol</span>;
+                <span class="p">step</span>.<span class="p">feeAmount</span> <span class="op">-=</span> <span class="p">delta</span>;
+                <span class="p">state</span>.<span class="p">protocolFee</span> <span class="op">+=</span> <span class="t">uint128</span>(<span class="p">delta</span>);
+            }
+
+            <span class="cd">// Accumulate per-unit-liquidity fee growth for LP positions.</span>
+            <span class="k">if</span> (<span class="p">state</span>.<span class="p">liquidity</span> <span class="op">></span> <span class="n">0</span>)
+                <span class="p">state</span>.<span class="p">feeGrowthGlobalX128</span> <span class="op">+=</span>
+                    <span class="t">FullMath</span>.<span class="fn">mulDiv</span>(<span class="p">step</span>.<span class="p">feeAmount</span>, <span class="t">FixedPoint128</span>.<span class="p">Q128</span>, <span class="p">state</span>.<span class="p">liquidity</span>);
+
+            <span class="cd">// ── 4. Cross the tick if we reached it exactly ─────────────────────</span>
+            <span class="k">if</span> (<span class="p">state</span>.<span class="p">sqrtPriceX96</span> <span class="op">==</span> <span class="p">step</span>.<span class="p">sqrtPriceNextX96</span>) {
+                <span class="k">if</span> (<span class="p">step</span>.<span class="p">initialized</span>) {
+                    <span class="cd">// Write an oracle observation before modifying liquidity.</span>
+                    (<span class="t">int56</span> <span class="p">tickCumulative</span>, <span class="t">uint160</span> <span class="p">secondsPerLiquidityX128</span>) <span class="op">=</span>
+                        <span class="p">observations</span>.<span class="fn">observeSingle</span>(
+                            <span class="fn">_blockTimestamp</span>(), <span class="n">0</span>,
+                            <span class="p">slot0Start</span>.<span class="p">tick</span>,
+                            <span class="p">slot0Start</span>.<span class="p">observationIndex</span>,
+                            <span class="p">state</span>.<span class="p">liquidity</span>,
+                            <span class="p">slot0Start</span>.<span class="p">observationCardinality</span>
+                        );
+
+                    <span class="cd">// Cross the tick: flip its feeGrowthOutside values.</span>
+                    <span class="cd">// Returns liquidityNet: the net change to apply to state.liquidity.</span>
+                    <span class="t">int128</span> <span class="p">liquidityNet</span> <span class="op">=</span> <span class="p">ticks</span>.<span class="fn">cross</span>(
+                        <span class="p">step</span>.<span class="p">tickNext</span>,
+                        (<span class="p">zeroForOne</span> <span class="op">?</span> <span class="p">state</span>.<span class="p">feeGrowthGlobalX128</span> : <span class="p">feeGrowthGlobal0X128</span>),
+                        (<span class="p">zeroForOne</span> <span class="op">?</span> <span class="p">feeGrowthGlobal1X128</span> : <span class="p">state</span>.<span class="p">feeGrowthGlobalX128</span>),
+                        <span class="p">secondsPerLiquidityX128</span>,
+                        <span class="p">tickCumulative</span>,
+                        <span class="fn">_blockTimestamp</span>()
+                    );
+
+                    <span class="cd">// For downward swaps, liquidityNet is negated.</span>
+                    <span class="cd">// (Liquidity added when entering a range from above = removed from below)</span>
+                    <span class="k">if</span> (<span class="p">zeroForOne</span>) <span class="p">liquidityNet</span> <span class="op">=</span> <span class="op">-</span><span class="p">liquidityNet</span>;
+
+                    <span class="p">state</span>.<span class="p">liquidity</span> <span class="op">=</span> <span class="p">liquidityNet</span> <span class="op"><</span> <span class="n">0</span>
+                        <span class="op">?</span> <span class="p">state</span>.<span class="p">liquidity</span> <span class="op">-</span> <span class="t">uint128</span>(<span class="op">-</span><span class="p">liquidityNet</span>)
+                        : <span class="p">state</span>.<span class="p">liquidity</span> <span class="op">+</span> <span class="t">uint128</span>(<span class="p">liquidityNet</span>);
+                }
+
+                <span class="cd">// Adjust tick: we crossed into the next range.</span>
+                <span class="cd">// Subtract 1 for zeroForOne because tick is the LOWER boundary.</span>
+                <span class="p">state</span>.<span class="p">tick</span> <span class="op">=</span> <span class="p">zeroForOne</span> <span class="op">?</span> <span class="p">step</span>.<span class="p">tickNext</span> <span class="op">-</span> <span class="n">1</span> : <span class="p">step</span>.<span class="p">tickNext</span>;
+            } <span class="k">else</span> <span class="k">if</span> (<span class="p">state</span>.<span class="p">sqrtPriceX96</span> <span class="op">!=</span> <span class="p">step</span>.<span class="p">sqrtPriceStartX96</span>) {
+                <span class="cd">// Price moved but did not reach the next tick — recompute tick from price.</span>
+                <span class="p">state</span>.<span class="p">tick</span> <span class="op">=</span> <span class="t">TickMath</span>.<span class="fn">getTickAtSqrtRatio</span>(<span class="p">state</span>.<span class="p">sqrtPriceX96</span>);
+            }
+        } <span class="c">// end while</span>
+
+        <span class="cd">// ── 5. Write final state back to storage ───────────────────────────────</span>
+        <span class="k">if</span> (<span class="p">state</span>.<span class="p">tick</span> <span class="op">!=</span> <span class="p">slot0Start</span>.<span class="p">tick</span>) {
+            <span class="cd">// Write an oracle observation for this swap (at most once per block).</span>
+            <span class="t">uint16</span> <span class="p">observationIndex</span>;
+            <span class="t">uint16</span> <span class="p">observationCardinality</span>;
+            (<span class="p">observationIndex</span>, <span class="p">observationCardinality</span>) <span class="op">=</span> <span class="p">observations</span>.<span class="fn">write</span>(
+                <span class="p">slot0Start</span>.<span class="p">observationIndex</span>,
+                <span class="fn">_blockTimestamp</span>(),
+                <span class="p">slot0Start</span>.<span class="p">tick</span>,
+                <span class="p">state</span>.<span class="p">liquidity</span>,
+                <span class="p">slot0Start</span>.<span class="p">observationCardinality</span>,
+                <span class="p">slot0Start</span>.<span class="p">observationCardinalityNext</span>
+            );
+            <span class="cd">// Single SSTORE: update price, tick, and oracle index atomically.</span>
+            (<span class="p">slot0</span>.<span class="p">sqrtPriceX96</span>, <span class="p">slot0</span>.<span class="p">tick</span>, <span class="p">slot0</span>.<span class="p">observationIndex</span>, <span class="p">slot0</span>.<span class="p">observationCardinality</span>) <span class="op">=</span>
+                (<span class="p">state</span>.<span class="p">sqrtPriceX96</span>, <span class="p">state</span>.<span class="p">tick</span>, <span class="p">observationIndex</span>, <span class="p">observationCardinality</span>);
+        } <span class="k">else</span> {
+            <span class="cd">// Price didn't change tick — just update sqrtPriceX96.</span>
+            <span class="p">slot0</span>.<span class="p">sqrtPriceX96</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">sqrtPriceX96</span>;
+        }
+
+        <span class="k">if</span> (<span class="p">liquidity</span> <span class="op">!=</span> <span class="p">state</span>.<span class="p">liquidity</span>) <span class="p">liquidity</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">liquidity</span>;
+
+        <span class="cd">// Write fee growth accumulators and protocol fees.</span>
+        <span class="k">if</span> (<span class="p">zeroForOne</span>) {
+            <span class="p">feeGrowthGlobal0X128</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">feeGrowthGlobalX128</span>;
+            <span class="k">if</span> (<span class="p">state</span>.<span class="p">protocolFee</span> <span class="op">></span> <span class="n">0</span>) <span class="p">protocolFees</span>.<span class="p">token0</span> <span class="op">+=</span> <span class="p">state</span>.<span class="p">protocolFee</span>;
+        } <span class="k">else</span> {
+            <span class="p">feeGrowthGlobal1X128</span> <span class="op">=</span> <span class="p">state</span>.<span class="p">feeGrowthGlobalX128</span>;
+            <span class="k">if</span> (<span class="p">state</span>.<span class="p">protocolFee</span> <span class="op">></span> <span class="n">0</span>) <span class="p">protocolFees</span>.<span class="p">token1</span> <span class="op">+=</span> <span class="p">state</span>.<span class="p">protocolFee</span>;
+        }
+
+        <span class="cd">// ── 6. Determine final signed amounts and call the swap callback ───────</span>
+        (<span class="p">amount0</span>, <span class="p">amount1</span>) <span class="op">=</span> <span class="p">zeroForOne</span> <span class="op">==</span> <span class="p">exactInput</span>
+            <span class="op">?</span> (<span class="p">amountSpecified</span> <span class="op">-</span> <span class="p">state</span>.<span class="p">amountSpecifiedRemaining</span>, <span class="p">state</span>.<span class="p">amountCalculated</span>)
+            : (<span class="p">state</span>.<span class="p">amountCalculated</span>, <span class="p">amountSpecified</span> <span class="op">-</span> <span class="p">state</span>.<span class="p">amountSpecifiedRemaining</span>);
+
+        <span class="cd">// Transfer output to recipient, then call the callback to collect input.</span>
+        <span class="k">if</span> (<span class="p">zeroForOne</span>) {
+            <span class="k">if</span> (<span class="p">amount1</span> <span class="op"><</span> <span class="n">0</span>)
+                <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token1</span>, <span class="p">recipient</span>, <span class="t">uint256</span>(<span class="op">-</span><span class="p">amount1</span>));
+            <span class="t">uint256</span> <span class="p">balance0Before</span> <span class="op">=</span> <span class="fn">balance0</span>();
+            <span class="t">IUniswapV3SwapCallback</span>(<span class="k">msg.sender</span>).<span class="fn">uniswapV3SwapCallback</span>(<span class="p">amount0</span>, <span class="p">amount1</span>, <span class="p">data</span>);
+            <span class="k">require</span>(<span class="fn">balance0</span>() <span class="op">>=</span> <span class="p">balance0Before</span> <span class="op">+</span> <span class="t">uint256</span>(<span class="p">amount0</span>), <span class="s">'IIA'</span>);
+        } <span class="k">else</span> {
+            <span class="k">if</span> (<span class="p">amount0</span> <span class="op"><</span> <span class="n">0</span>)
+                <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token0</span>, <span class="p">recipient</span>, <span class="t">uint256</span>(<span class="op">-</span><span class="p">amount0</span>));
+            <span class="t">uint256</span> <span class="p">balance1Before</span> <span class="op">=</span> <span class="fn">balance1</span>();
+            <span class="t">IUniswapV3SwapCallback</span>(<span class="k">msg.sender</span>).<span class="fn">uniswapV3SwapCallback</span>(<span class="p">amount0</span>, <span class="p">amount1</span>, <span class="p">data</span>);
+            <span class="k">require</span>(<span class="fn">balance1</span>() <span class="op">>=</span> <span class="p">balance1Before</span> <span class="op">+</span> <span class="t">uint256</span>(<span class="p">amount1</span>), <span class="s">'IIA'</span>);
+        }
+
+        <span class="k">emit</span> <span class="ev">Swap</span>(<span class="k">msg.sender</span>, <span class="p">recipient</span>, <span class="p">amount0</span>, <span class="p">amount1</span>,
+            <span class="p">state</span>.<span class="p">sqrtPriceX96</span>, <span class="p">state</span>.<span class="p">liquidity</span>, <span class="p">state</span>.<span class="p">tick</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: flash -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-flash" onclick="activateSection('s-flash')">
+  <div class="section-header">
+    <div class="section-num">15</div>
+    <div class="section-name">flash() — Uncollateralized flash loans with fee</div>
+    <div class="section-hint">transfer → callback → verify repayment + fee</div>
+  </div>
+<pre>    <span class="cd">/// @notice Lend up to the pool's full balance of token0 and/or token1.</span>
+    <span class="cd">/// The caller must repay the borrowed amount PLUS a fee within the same transaction.</span>
+    <span class="k">function</span> <span class="fn">flash</span>(
+        <span class="k">address</span>   <span class="p">recipient</span>,
+        <span class="t">uint256</span>   <span class="p">amount0</span>,    <span class="c">// token0 to borrow</span>
+        <span class="t">uint256</span>   <span class="p">amount1</span>,    <span class="c">// token1 to borrow</span>
+        <span class="t">bytes</span> <span class="k">calldata</span> <span class="p">data</span>
+    ) <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span> <span class="m">noDelegateCall</span> {
+        <span class="t">uint128</span> <span class="p">_liquidity</span> <span class="op">=</span> <span class="p">liquidity</span>;
+        <span class="k">require</span>(<span class="p">_liquidity</span> <span class="op">></span> <span class="n">0</span>, <span class="s">'L'</span>);
+
+        <span class="cd">// Compute fee: same rate as the swap fee.</span>
+        <span class="cd">// fee1 = ceil(amount1 * fee / 1_000_000)</span>
+        <span class="t">uint256</span> <span class="p">fee0</span> <span class="op">=</span> <span class="t">FullMath</span>.<span class="fn">mulDivRoundingUp</span>(<span class="p">amount0</span>, <span class="p">fee</span>, <span class="n">1e6</span>);
+        <span class="t">uint256</span> <span class="p">fee1</span> <span class="op">=</span> <span class="t">FullMath</span>.<span class="fn">mulDivRoundingUp</span>(<span class="p">amount1</span>, <span class="p">fee</span>, <span class="n">1e6</span>);
+
+        <span class="cd">// Record balances BEFORE sending tokens out.</span>
+        <span class="t">uint256</span> <span class="p">balance0Before</span> <span class="op">=</span> <span class="fn">balance0</span>();
+        <span class="t">uint256</span> <span class="p">balance1Before</span> <span class="op">=</span> <span class="fn">balance1</span>();
+
+        <span class="cd">// Transfer the requested amounts to the recipient.</span>
+        <span class="k">if</span> (<span class="p">amount0</span> <span class="op">></span> <span class="n">0</span>) <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token0</span>, <span class="p">recipient</span>, <span class="p">amount0</span>);
+        <span class="k">if</span> (<span class="p">amount1</span> <span class="op">></span> <span class="n">0</span>) <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token1</span>, <span class="p">recipient</span>, <span class="p">amount1</span>);
+
+        <span class="cd">// Recipient does its arbitrage / liquidation / whatever in the callback.</span>
+        <span class="t">IUniswapV3FlashCallback</span>(<span class="k">msg.sender</span>).<span class="fn">uniswapV3FlashCallback</span>(<span class="p">fee0</span>, <span class="p">fee1</span>, <span class="p">data</span>);
+
+        <span class="cd">// After callback: verify full repayment including fees.</span>
+        <span class="k">require</span>(<span class="fn">balance0</span>() <span class="op">>=</span> <span class="p">balance0Before</span> <span class="op">+</span> <span class="p">fee0</span>, <span class="s">'F0'</span>);
+        <span class="k">require</span>(<span class="fn">balance1</span>() <span class="op">>=</span> <span class="p">balance1Before</span> <span class="op">+</span> <span class="p">fee1</span>, <span class="s">'F1'</span>);
+
+        <span class="cd">// Distribute flash fees to LP fee growth (and protocol if enabled).</span>
+        <span class="t">uint256</span> <span class="p">paid0</span> <span class="op">=</span> <span class="fn">balance0</span>() <span class="op">-</span> <span class="p">balance0Before</span>;
+        <span class="t">uint256</span> <span class="p">paid1</span> <span class="op">=</span> <span class="fn">balance1</span>() <span class="op">-</span> <span class="p">balance1Before</span>;
+        <span class="c">// [fee distribution logic omitted for brevity — mirrors swap fee logic]</span>
+
+        <span class="k">emit</span> <span class="ev">Flash</span>(<span class="k">msg.sender</span>, <span class="p">recipient</span>, <span class="p">amount0</span>, <span class="p">amount1</span>, <span class="p">paid0</span>, <span class="p">paid1</span>);
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: observe -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-observe" onclick="activateSection('s-observe')">
+  <div class="section-header">
+    <div class="section-num">16</div>
+    <div class="section-name">observe() — Read TWAP oracle data for arbitrary timestamps</div>
+    <div class="section-hint">binary search · tickCumulatives · geometric mean</div>
+  </div>
+<pre>    <span class="cd">/// @notice Returns cumulative tick and seconds-per-liquidity values for given timestamps.</span>
+    <span class="cd">/// @param secondsAgos  Array of how-many-seconds-ago each data point should be.</span>
+    <span class="cd">///        secondsAgos[0] = 0 returns the current (interpolated) value.</span>
+    <span class="cd">///        secondsAgos[0] = 1800 returns the value 30 minutes ago.</span>
+    <span class="cd">///</span>
+    <span class="cd">/// To compute a 30-minute TWAP:</span>
+    <span class="cd">///   uint32[] memory ago = new uint32[](2);</span>
+    <span class="cd">///   ago[0] = 1800; ago[1] = 0;</span>
+    <span class="cd">///   (int56[] memory cumulatives, ) = pool.observe(ago);</span>
+    <span class="cd">///   int24 avgTick = int24((cumulatives[1] - cumulatives[0]) / 1800);</span>
+    <span class="k">function</span> <span class="fn">observe</span>(<span class="t">uint32</span>[] <span class="k">calldata</span> <span class="p">secondsAgos</span>)
+        <span class="k">external</span> <span class="k">view</span> <span class="k">override</span>
+        <span class="k">returns</span> (
+            <span class="t">int56</span>[]  <span class="k">memory</span> <span class="p">tickCumulatives</span>,
+            <span class="t">uint160</span>[] <span class="k">memory</span> <span class="p">secondsPerLiquidityCumulativeX128s</span>
+        )
+    {
+        <span class="k">return</span> <span class="p">observations</span>.<span class="fn">observe</span>(
+            <span class="fn">_blockTimestamp</span>(),
+            <span class="p">secondsAgos</span>,
+            <span class="p">slot0</span>.<span class="p">tick</span>,
+            <span class="p">slot0</span>.<span class="p">observationIndex</span>,
+            <span class="p">liquidity</span>,
+            <span class="p">slot0</span>.<span class="p">observationCardinality</span>
+        );
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: snapshotCumulativesInside -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-snapshot" onclick="activateSection('s-snapshot')">
+  <div class="section-header">
+    <div class="section-num">17</div>
+    <div class="section-name">snapshotCumulativesInside() — Oracle data for a specific tick range</div>
+    <div class="section-hint">in-range TWAP · tickCumulativeInside · for incentives</div>
+  </div>
+<pre>    <span class="cd">/// @notice Returns cumulative values INSIDE a given tick range.</span>
+    <span class="cd">/// Used by yield farming contracts to reward LPs proportionally to time-in-range.</span>
+    <span class="cd">///</span>
+    <span class="cd">/// The inside values are computed from the "outside" accumulators stored</span>
+    <span class="cd">/// on the lower and upper ticks, using the current tick to determine which</span>
+    <span class="cd">/// side is which.</span>
+    <span class="k">function</span> <span class="fn">snapshotCumulativesInside</span>(<span class="t">int24</span> <span class="p">tickLower</span>, <span class="t">int24</span> <span class="p">tickUpper</span>)
+        <span class="k">external</span> <span class="k">view</span> <span class="k">override</span>
+        <span class="k">returns</span> (
+            <span class="t">int56</span>   <span class="p">tickCumulativeInside</span>,
+            <span class="t">uint160</span> <span class="p">secondsPerLiquidityInsideX128</span>,
+            <span class="t">uint32</span>  <span class="p">secondsInside</span>
+        )
+    {
+        <span class="fn">checkTicks</span>(<span class="p">tickLower</span>, <span class="p">tickUpper</span>);
+        <span class="t">Tick.Info</span> <span class="k">storage</span> <span class="p">lower</span> <span class="op">=</span> <span class="p">ticks</span>[<span class="p">tickLower</span>];
+        <span class="t">Tick.Info</span> <span class="k">storage</span> <span class="p">upper</span> <span class="op">=</span> <span class="p">ticks</span>[<span class="p">tickUpper</span>];
+        <span class="t">int24</span> <span class="p">_tick</span> <span class="op">=</span> <span class="p">slot0</span>.<span class="p">tick</span>;
+
+        <span class="c">// "Outside" means on the opposite side of the tick from the current price.</span>
+        <span class="c">// For ticks BELOW current price: outside = below the tick = NOT inside.</span>
+        <span class="c">// For ticks ABOVE current price: outside = above the tick = NOT inside.</span>
+        <span class="c">// inside = global - below - above</span>
+
+        <span class="t">int56</span>   <span class="p">lowerTickCumulative</span>       <span class="op">=</span> <span class="p">lower</span>.<span class="p">tickCumulativeOutside</span>;
+        <span class="t">uint160</span> <span class="p">lowerSecondsPerLiquidity</span> <span class="op">=</span> <span class="p">lower</span>.<span class="p">secondsPerLiquidityOutsideX128</span>;
+        <span class="t">uint32</span>  <span class="p">lowerSeconds</span>             <span class="op">=</span> <span class="p">lower</span>.<span class="p">secondsOutside</span>;
+
+        <span class="k">if</span> (<span class="p">_tick</span> <span class="op"><</span> <span class="p">tickLower</span>) {
+            <span class="cd">// Current price is below the range; the lowerTick's "outside" is actually inside.</span>
+            (<span class="t">int56</span> <span class="p">tc</span>, <span class="t">uint160</span> <span class="p">spl</span>, <span class="t">uint32</span> <span class="p">s</span>) <span class="op">=</span> <span class="fn">_currentObservation</span>();
+            <span class="p">lowerTickCumulative</span>       <span class="op">=</span> <span class="p">tc</span>       <span class="op">-</span> <span class="p">lowerTickCumulative</span>;
+            <span class="p">lowerSecondsPerLiquidity</span> <span class="op">=</span> <span class="p">spl</span>      <span class="op">-</span> <span class="p">lowerSecondsPerLiquidity</span>;
+            <span class="p">lowerSeconds</span>             <span class="op">=</span> <span class="p">s</span>        <span class="op">-</span> <span class="p">lowerSeconds</span>;
+        }
+
+        <span class="c">// [mirror logic for upper tick — omitted for brevity]</span>
+
+        <span class="p">tickCumulativeInside</span>             <span class="op">=</span> <span class="p">upperTickCumulative</span> <span class="op">-</span> <span class="p">lowerTickCumulative</span>;
+        <span class="p">secondsPerLiquidityInsideX128</span>   <span class="op">=</span> <span class="p">upperSecondsPerLiquidity</span> <span class="op">-</span> <span class="p">lowerSecondsPerLiquidity</span>;
+        <span class="p">secondsInside</span>                   <span class="op">=</span> <span class="p">upperSeconds</span> <span class="op">-</span> <span class="p">lowerSeconds</span>;
+    }
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION: setFeeProtocol / collectProtocol -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="code-section" id="s-protocol" onclick="activateSection('s-protocol')">
+  <div class="section-header">
+    <div class="section-num">18</div>
+    <div class="section-name">setFeeProtocol() &amp; collectProtocol() — Factory owner governance</div>
+    <div class="section-hint">1/N of LP fees · 4-bit fields in feeProtocol</div>
+  </div>
+<pre>    <span class="cd">/// @notice Enables or changes the protocol fee split. Only the factory owner.</span>
+    <span class="cd">/// @param feeProtocol0 Protocol's share of token0 fees (0 = disabled, 4–10 valid).</span>
+    <span class="cd">///        Value N means LP gets (N-1)/N, protocol gets 1/N.</span>
+    <span class="cd">///        e.g. feeProtocol0=6 → protocol takes 1/6 of swap fees in token0.</span>
+    <span class="k">function</span> <span class="fn">setFeeProtocol</span>(<span class="t">uint8</span> <span class="p">feeProtocol0</span>, <span class="t">uint8</span> <span class="p">feeProtocol1</span>)
+        <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span> <span class="m">onlyFactoryOwner</span>
+    {
+        <span class="k">require</span>(
+            (<span class="p">feeProtocol0</span> <span class="op">==</span> <span class="n">0</span> <span class="op">||</span> (<span class="p">feeProtocol0</span> <span class="op">>=</span> <span class="n">4</span> <span class="op">&&</span> <span class="p">feeProtocol0</span> <span class="op"><=</span> <span class="n">10</span>)) <span class="op">&&</span>
+            (<span class="p">feeProtocol1</span> <span class="op">==</span> <span class="n">0</span> <span class="op">||</span> (<span class="p">feeProtocol1</span> <span class="op">>=</span> <span class="n">4</span> <span class="op">&&</span> <span class="p">feeProtocol1</span> <span class="op"><=</span> <span class="n">10</span>))
+        );
+        <span class="t">uint8</span> <span class="p">feeProtocolOld</span> <span class="op">=</span> <span class="p">slot0</span>.<span class="p">feeProtocol</span>;
+        <span class="cd">// Pack both values into one byte: low nibble = token0, high nibble = token1.</span>
+        <span class="p">slot0</span>.<span class="p">feeProtocol</span> <span class="op">=</span> <span class="p">feeProtocol0</span> <span class="op">+</span> (<span class="p">feeProtocol1</span> <span class="op"><<</span> <span class="n">4</span>);
+        <span class="k">emit</span> <span class="ev">SetFeeProtocol</span>(<span class="p">feeProtocolOld</span> <span class="op">%</span> <span class="n">16</span>, <span class="p">feeProtocolOld</span> <span class="op">>></span> <span class="n">4</span>, <span class="p">feeProtocol0</span>, <span class="p">feeProtocol1</span>);
+    }
+</pre>
+</div>
+
+<div class="code-section" id="s-collect-protocol" onclick="activateSection('s-collect-protocol')">
+  <div class="section-header">
+    <div class="section-num">19</div>
+    <div class="section-name">collectProtocol() — Withdraw accrued protocol fees</div>
+    <div class="section-hint">factory owner only · transfers from protocolFees</div>
+  </div>
+<pre>    <span class="cd">/// @notice Withdraws protocol fees to the recipient. Factory owner only.</span>
+    <span class="k">function</span> <span class="fn">collectProtocol</span>(
+        <span class="k">address</span>   <span class="p">recipient</span>,
+        <span class="t">uint128</span>   <span class="p">amount0Requested</span>,
+        <span class="t">uint128</span>   <span class="p">amount1Requested</span>
+    ) <span class="k">external</span> <span class="k">override</span> <span class="m">lock</span> <span class="m">onlyFactoryOwner</span>
+      <span class="k">returns</span> (<span class="t">uint128</span> <span class="p">amount0</span>, <span class="t">uint128</span> <span class="p">amount1</span>)
+    {
+        <span class="p">amount0</span> <span class="op">=</span> <span class="p">amount0Requested</span> <span class="op">></span> <span class="p">protocolFees</span>.<span class="p">token0</span>
+            <span class="op">?</span> <span class="p">protocolFees</span>.<span class="p">token0</span>
+            : <span class="p">amount0Requested</span>;
+        <span class="p">amount1</span> <span class="op">=</span> <span class="p">amount1Requested</span> <span class="op">></span> <span class="p">protocolFees</span>.<span class="p">token1</span>
+            <span class="op">?</span> <span class="p">protocolFees</span>.<span class="p">token1</span>
+            : <span class="p">amount1Requested</span>;
+
+        <span class="k">if</span> (<span class="p">amount0</span> <span class="op">></span> <span class="n">0</span>) {
+            <span class="p">protocolFees</span>.<span class="p">token0</span> <span class="op">-=</span> <span class="p">amount0</span>;
+            <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token0</span>, <span class="p">recipient</span>, <span class="p">amount0</span>);
+        }
+        <span class="k">if</span> (<span class="p">amount1</span> <span class="op">></span> <span class="n">0</span>) {
+            <span class="p">protocolFees</span>.<span class="p">token1</span> <span class="op">-=</span> <span class="p">amount1</span>;
+            <span class="t">TransferHelper</span>.<span class="fn">safeTransfer</span>(<span class="p">token1</span>, <span class="p">recipient</span>, <span class="p">amount1</span>);
+        }
+        <span class="k">emit</span> <span class="ev">CollectProtocol</span>(<span class="k">msg.sender</span>, <span class="p">recipient</span>, <span class="p">amount0</span>, <span class="p">amount1</span>);
+    }
+
+} <span class="c">// end UniswapV3Pool</span>
+</pre>
+</div>
+
+</div><!-- code-scroll -->
+</div><!-- code-pane -->
+
+<!-- Explanation panel -->
+<div class="explain-pane" id="explain-pane">
+  <div class="explain-inner" id="explain-inner">
+    <div class="explain-placeholder">
+      <div class="icon">←</div>
+      <p>Click any section in the code to see a detailed explanation here.</p>
+      <p style="font-size:12px;">Covers design decisions, gas optimisations, security patterns, and the maths behind each function.</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- app -->
+
+<script>
+const explanations = {
+
+'s-pragma': {
+  tag: 'tag-state', tagLabel: 'Overview',
+  title: 'Imports & contract shape',
+  subtitle: 'UniswapV3Pool.sol',
+  html: `
+    <p>The pool inherits two things: <code>IUniswapV3Pool</code> (the full interface — everything is external) and <code>NoDelegateCall</code>, a simple guard that reverts if the pool is called via <code>DELEGATECALL</code>.</p>
+    <p><strong>Why NoDelegateCall?</strong> If someone wraps the pool bytecode in a proxy, storage slots shift. That would corrupt price data, fee accumulators, and the reentrancy lock. The guard costs nothing at runtime — it just checks <code>address(this) == deployedAddress</code>.</p>
+    <p>The library imports tell the full story of what the pool delegates:</p>
+    <ul>
+      <li><code>SqrtPriceMath</code> — converts between √price and token amounts</li>
+      <li><code>SwapMath</code> — single-step swap calculation (one tick range at a time)</li>
+      <li><code>TickBitmap</code> — O(1) next-initialized-tick lookup via bit scanning</li>
+      <li><code>Oracle</code> — TWAP circular buffer: write, observe, binary search</li>
+      <li><code>FullMath</code> — 512-bit intermediate multiplication to avoid overflow in fee calculations</li>
+    </ul>
+    <div class="callout callout-gas">
+      <div class="callout-label">Gas note</div>
+      <code>LowGasSafeMath</code> is used instead of OpenZeppelin's SafeMath because it skips the string revert reason, saving ~200 gas on arithmetic checks. The trade-off: debugging is harder on failed txs.
+    </div>
+  `
+},
+
+'s-slot0': {
+  tag: 'tag-state', tagLabel: 'Storage',
+  title: 'Slot0 — one cold SLOAD for everything',
+  subtitle: 'struct Slot0 packed into 248 bits',
+  html: `
+    <p>Every public read of "what's the current price?" would normally cost at least one cold <code>SLOAD</code> (~2100 gas). By packing all price-adjacent state into a single 32-byte storage slot, <em>all</em> of this comes for free in that one SLOAD:</p>
+    <table class="field-table">
+      <tr><th>Field</th><th>Bits</th><th>Purpose</th></tr>
+      <tr><td>sqrtPriceX96</td><td>160</td><td>Current price in Q64.96 fixed-point. Square it and divide by 2^192 to get the real price ratio.</td></tr>
+      <tr><td>tick</td><td>24</td><td>floor(log₁.₀₀₀₁(price)). Always consistent with sqrtPriceX96.</td></tr>
+      <tr><td>observationIndex</td><td>16</td><td>Pointer to the latest oracle observation in the circular buffer.</td></tr>
+      <tr><td>observationCardinality</td><td>16</td><td>How many oracle slots are live. Starts at 1.</td></tr>
+      <tr><td>observationCardinalityNext</td><td>16</td><td>Target to grow to on next oracle write.</td></tr>
+      <tr><td>feeProtocol</td><td>8</td><td>Low nibble = token0 divisor, high nibble = token1. Zero means protocol fee off.</td></tr>
+      <tr><td>unlocked</td><td>8</td><td>Reentrancy guard. <code>false</code> while a call is executing.</td></tr>
+    </table>
+    <p>Total: 248 bits ≤ 256. The 8 spare bits are wasted, but the alignment is perfect.</p>
+    <div class="callout callout-sec">
+      <div class="callout-label">Security</div>
+      The <code>lock</code> modifier reads <em>and</em> writes <code>slot0.unlocked</code> in the same SLOAD/SSTORE that reads the price. This is not a classic mutex — the lock is embedded in the price word, so you physically cannot read a stale price while reentrancy is in progress.
+    </div>
+    <div class="callout callout-math">
+      <div class="callout-label">Math</div>
+      <strong>Q64.96 format:</strong> <code>sqrtPriceX96 = √price × 2^96</code>. To recover price: <code>price = (sqrtPriceX96)² / 2^192</code>. Using 160 bits for the sqrt (not the price) lets one uint160 cover the full ±887,272 tick range without overflow.
+    </div>
+  `
+},
+
+'s-feegrowth': {
+  tag: 'tag-math', tagLabel: 'Fee Accounting',
+  title: 'feeGrowthGlobal — the fee bookkeeping heart',
+  subtitle: 'Q128.128 · monotonically increasing · per unit of liquidity',
+  html: `
+    <p>Instead of tracking "how many fees does each LP earn", V3 tracks a global accumulator that grows every time a fee is collected. This design means LP positions need only store a <em>single snapshot</em> — the accumulator value when they last collected.</p>
+    <p><strong>The formula for a position's earned fees:</strong></p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;">fees = (feeGrowthInside_now - feeGrowthInside_snapshot) 
+       × position.liquidity / 2^128</pre>
+    <p>Where <code>feeGrowthInside</code> is computed from the global accumulator minus the "outside" accumulators on the boundary ticks.</p>
+    <div class="callout callout-math">
+      <div class="callout-label">Fixed-point format</div>
+      Q128.128 means 128 integer bits and 128 fractional bits. The value is stored as <code>fee_per_unit_liquidity × 2^128</code>. Using 2^128 as the denominator gives incredible precision — even tiny fees on huge liquidity accumulate without rounding to zero.
+    </div>
+    <p><strong>Why split into two accumulators</strong> (one per token)? Because each swap fee is charged in the <em>input</em> token. A token0→token1 swap pays fees in token0, so only <code>feeGrowthGlobal0X128</code> increases.</p>
+    <p>Protocol fees are carved out before the accumulator is updated — LPs never see protocol's share in their fee growth.</p>
+  `
+},
+
+'s-liquidity': {
+  tag: 'tag-state', tagLabel: 'State',
+  title: 'liquidity — only what\'s active RIGHT NOW',
+  subtitle: 'uint128 · in-range only · changes on tick cross',
+  html: `
+    <p>This is one of V3's most important invariants: <code>liquidity</code> tracks only the sum of position liquidities whose ranges <em>include the current tick</em>.</p>
+    <p>It is <strong>not</strong> the total of all deposited liquidity. An LP who provides between ticks 1000–2000 contributes zero to <code>liquidity</code> if the current tick is 500.</p>
+    <p>This value is used in two critical calculations:</p>
+    <ul>
+      <li><strong>Fee distribution:</strong> <code>feeGrowthGlobal += fee / liquidity</code> — distributes fees proportionally among active LPs only.</li>
+      <li><strong>Swap math:</strong> <code>SwapMath.computeSwapStep</code> uses it to determine how much the price moves for a given input amount.</li>
+    </ul>
+    <div class="callout callout-tip">
+      <div class="callout-label">Key insight</div>
+      When a swap crosses a tick boundary, <code>liquidity</code> is updated by adding <code>liquidityNet</code> from that tick. This is how out-of-range positions "turn on" and "turn off" as price moves through their boundaries — no loop over all positions needed.
+    </div>
+  `
+},
+
+'s-mappings': {
+  tag: 'tag-state', tagLabel: 'Storage',
+  title: 'ticks & tickBitmap — the liquidity bookkeeping engine',
+  subtitle: 'liquidityNet · feeGrowthOutside · bit scanning',
+  html: `
+    <p>Together, these two mappings are responsible for efficient swap routing across the tick space.</p>
+    <p><strong>ticks</strong> stores per-tick data only for <em>initialized</em> ticks (those used as a position boundary). Each <code>Tick.Info</code> contains:</p>
+    <table class="field-table">
+      <tr><th>Field</th><th>Purpose</th></tr>
+      <tr><td>liquidityGross</td><td>Total liquidity referencing this tick. When it hits 0, the tick is un-initialized and its bitmap bit is cleared.</td></tr>
+      <tr><td>liquidityNet</td><td>Net change to apply to the pool's active <code>liquidity</code> when price crosses this tick. Positive at lower ticks, negative at upper ticks.</td></tr>
+      <tr><td>feeGrowthOutside{0,1}X128</td><td>Fee growth on the OTHER side of this tick from the current price. Flipped on each tick crossing. Used to derive feeGrowthInside for any position.</td></tr>
+    </table>
+    <div class="callout callout-gas">
+      <div class="callout-label">Gas design</div>
+      <strong>tickBitmap:</strong> The int24 tick space is divided into words of 256 bits (indexed by int16). A set bit = initialized tick. <code>nextInitializedTickWithinOneWord()</code> uses a single bit-scan operation (<code>lsb/msb</code> via assembly) to skip large uninitialized regions. Worst case is 256 consecutive words (~32,768 gas), not 887,272 iterations.
+    </div>
+    <p>Clearing a tick's storage when its <code>liquidityGross</code> hits zero gives the caller a gas refund (EIP-2929 reduced these, but it still helps for cold storage slots).</p>
+  `
+},
+
+'s-positions': {
+  tag: 'tag-state', tagLabel: 'Storage',
+  title: 'positions — LP position storage',
+  subtitle: 'keccak256(owner, tickLower, tickUpper) → Position.Info',
+  html: `
+    <p>Each LP position is identified by a 32-byte key derived from hashing the owner address and the tick boundaries. This means:</p>
+    <ul>
+      <li>A single EOA can hold multiple positions in the same pool (with different ranges).</li>
+      <li>There are no ERC-721 tokens in the pool itself — those are managed by <code>NonfungiblePositionManager</code> which stores its own positions in the pool under its own address as owner.</li>
+      <li>The key is compact — no arrays, no length tracking. Lookup is O(1).</li>
+    </ul>
+    <table class="field-table">
+      <tr><th>Field</th><th>Purpose</th></tr>
+      <tr><td>liquidity</td><td>Amount of liquidity this position has deposited.</td></tr>
+      <tr><td>feeGrowthInside0LastX128</td><td>Snapshot of feeGrowthInside at the time of last fee collection or liquidity change.</td></tr>
+      <tr><td>tokensOwed0/1</td><td>Fees + burned liquidity ready to collect via <code>collect()</code>.</td></tr>
+    </table>
+    <div class="callout callout-tip">
+      <div class="callout-label">Collect pattern</div>
+      The two-step <strong>burn → collect</strong> pattern is intentional. <code>burn()</code> updates fee accounting and credits <code>tokensOwed</code>. <code>collect()</code> transfers tokens. Separating them lets fee collection and liquidity withdrawal happen atomically or independently.
+    </div>
+  `
+},
+
+'s-observations': {
+  tag: 'tag-oracle', tagLabel: 'Oracle',
+  title: 'observations — On-chain TWAP oracle',
+  subtitle: 'circular buffer · tickCumulative · binary search',
+  html: `
+    <p>The oracle records a running sum of <code>tick × seconds</code> since pool creation. Because it's a cumulative, the average tick over any time window is just:</p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;">avgTick = (tickCumulative[T1] - tickCumulative[T0]) / (T1 - T0)
+avgPrice = 1.0001 ^ avgTick   // geometric mean price</pre>
+    <p>This gives a manipulation-resistant price because it uses the <em>time-weighted average</em> — not the spot price at a single block.</p>
+    <p><strong>How the buffer works:</strong></p>
+    <ul>
+      <li>Starts with cardinality = 1. Only one slot is used; TWAP lookbacks are limited to the current block.</li>
+      <li>Call <code>increaseObservationCardinalityNext(N)</code> to expand. Each new slot is initialized lazily on the next swap that writes to it — paying ~20k gas at that point.</li>
+      <li>The buffer wraps circularly. Old observations are overwritten. Cardinality determines the maximum lookback period.</li>
+    </ul>
+    <div class="callout callout-sec">
+      <div class="callout-label">Manipulation resistance</div>
+      An attacker would need to hold the spot price at an extreme value for extended blocks — in a busy pool, other swappers would immediately arbitrage back. The cost of sustaining a manipulated TWAP scales with the pool's depth and the duration of the window.
+    </div>
+    <div class="callout callout-gas">
+      <div class="callout-label">Gas note</div>
+      Only ONE observation is written per block (the first swap of a block writes, subsequent swaps don't). This keeps oracle update costs predictable regardless of swap volume.
+    </div>
+  `
+},
+
+'s-constructor': {
+  tag: 'tag-func', tagLabel: 'Init',
+  title: 'constructor — reads params from deployer',
+  subtitle: 'CREATE2 determinism · IUniswapV3PoolDeployer',
+  html: `
+    <p>The pool is always deployed via <code>UniswapV3Factory.createPool()</code> using <code>CREATE2</code> with the salt:</p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;">salt = keccak256(abi.encode(token0, token1, fee))</pre>
+    <p>This gives <strong>deterministic, pre-computable addresses</strong> — anyone can predict the pool address for a given pair/fee combination without deploying it first.</p>
+    <p><strong>Why not pass params as constructor arguments?</strong> Constructor arguments are appended to the initcode, which changes the bytecode hash, which changes the CREATE2 address. To keep addresses deterministic with no params in the constructor, the factory instead stores params in its own storage and this constructor reads them back via <code>IUniswapV3PoolDeployer(msg.sender).parameters()</code>.</p>
+    <div class="callout callout-tip">
+      <div class="callout-label">maxLiquidityPerTick</div>
+      Pre-computed in the constructor as <code>type(uint128).max / (range / tickSpacing)</code>. This caps how much liquidity can sit on a single tick, preventing <code>liquidityGross</code> from overflowing uint128 regardless of how many positions reference that tick.
+    </div>
+  `
+},
+
+'s-initialize': {
+  tag: 'tag-func', tagLabel: 'Init',
+  title: 'initialize() — set starting price, open the pool',
+  subtitle: 'must be called before mint or swap',
+  html: `
+    <p>A freshly deployed pool has <code>slot0.sqrtPriceX96 == 0</code>, meaning all functions that use the current price will revert. <code>initialize()</code> is the one-time bootstrap:</p>
+    <ul>
+      <li>Sets <code>sqrtPriceX96</code> to the caller's chosen starting price.</li>
+      <li>Derives <code>tick</code> from the price using <code>TickMath.getTickAtSqrtRatio()</code>.</li>
+      <li>Writes the first oracle observation (time = now, cumulative = 0).</li>
+      <li>Sets <code>unlocked = true</code>, opening the pool for business.</li>
+    </ul>
+    <p>There is no access control — anyone can call this. The factory does NOT call it during deployment, because the caller might want to initialize at a specific price. In practice, Uniswap's UI and routers call it immediately before the first mint.</p>
+    <div class="callout callout-sec">
+      <div class="callout-label">Sandwich attack window</div>
+      The gap between deployment and initialization is a potential front-running window. An attacker could initialize at an extreme price, then sandwich the legitimate first mint. In practice this is mitigated by routing through contracts that initialize and mint atomically.
+    </div>
+  `
+},
+
+'s-update-pos': {
+  tag: 'tag-func', tagLabel: 'Internal',
+  title: '_updatePosition() — shared bookkeeping for mint & burn',
+  subtitle: 'tick flip · feeGrowthInside · tokensOwed update',
+  html: `
+    <p>Both <code>mint()</code> and <code>burn()</code> delegate all the hard bookkeeping work to <code>_updatePosition()</code>. The function does four things:</p>
+    <p><strong>1. Update tick data (if liquidityDelta ≠ 0):</strong> calls <code>ticks.update()</code> on both boundary ticks. If a tick "flips" (transitions between initialized and uninitialized), the bitmap bit is set/cleared accordingly.</p>
+    <p><strong>2. Compute feeGrowthInside:</strong></p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;">feeGrowthInside = feeGrowthGlobal 
+  - feeGrowthBelow(tickLower)
+  - feeGrowthAbove(tickUpper)</pre>
+    <p>Each tick stores its "outside" accumulator, which is flipped on each crossing. The inside value is therefore always computable from three stored values.</p>
+    <p><strong>3. Update position:</strong> <code>position.update()</code> computes newly earned fees since the last snapshot, adds them to <code>tokensOwed</code>, and saves the new snapshot.</p>
+    <p><strong>4. Clear tick storage on full removal:</strong> If a tick was flipped (de-initialized) by a burn, its storage slot is zeroed out for a gas refund.</p>
+    <div class="callout callout-tip">
+      <div class="callout-label">Burn(0) pattern</div>
+      Calling <code>burn(0, tickLower, tickUpper)</code> is a valid idiom to force a fee update without removing liquidity. It runs through all of _updatePosition but with liquidityDelta=0, so no tick flips happen — you just get an updated <code>tokensOwed</code> snapshot.
+    </div>
+  `
+},
+
+'s-mint': {
+  tag: 'tag-core', tagLabel: 'Core',
+  title: 'mint() — add concentrated liquidity',
+  subtitle: 'callback-then-verify · SqrtPriceMath · no direct transfer',
+  html: `
+    <p>Adding liquidity follows the <strong>optimistic pull</strong> pattern:</p>
+    <ol>
+      <li>Compute how many tokens are needed for the requested liquidity amount and price range.</li>
+      <li>Update all internal state (positions, ticks, bitmap).</li>
+      <li>Call <code>uniswapV3MintCallback()</code> on the caller — they must transfer the tokens NOW.</li>
+      <li>Verify the balance increased by at least the required amount.</li>
+    </ol>
+    <p>The token amounts depend on the current price relative to the range:</p>
+    <ul>
+      <li><strong>Current price below range:</strong> only token0 is needed (position is all token0).</li>
+      <li><strong>Current price above range:</strong> only token1 is needed.</li>
+      <li><strong>Current price inside range:</strong> both tokens needed, proportional to where price sits within [lower, upper].</li>
+    </ul>
+    <div class="callout callout-math">
+      <div class="callout-label">SqrtPriceMath</div>
+      Token amounts are derived from:
+      <code>Δ(1/√P) × L = amount0</code> and <code>Δ√P × L = amount1</code>. This ensures constant-product behavior within each tick range.
+    </div>
+    <div class="callout callout-sec">
+      <div class="callout-label">Security</div>
+      The <code>lock</code> modifier prevents reentrancy. Even though the callback can execute arbitrary code, the pool's state is fully updated before the callback fires, and the final balance check prevents theft.
+    </div>
+  `
+},
+
+'s-collect': {
+  tag: 'tag-func', tagLabel: 'Liquidity',
+  title: 'collect() — withdraw fees and burned principal',
+  subtitle: 'reads tokensOwed · no oracle write · no callback',
+  html: `
+    <p><code>collect()</code> is deliberately simple — it just reads <code>tokensOwed</code> from the position and transfers tokens. There is no math here.</p>
+    <p><strong>The typical fee collection flow:</strong></p>
+    <ol>
+      <li>Call <code>burn(0, lower, upper)</code> — forces <code>_updatePosition</code>, which computes accrued fees and adds them to <code>tokensOwed</code>.</li>
+      <li>Call <code>collect(recipient, lower, upper, type(uint128).max, type(uint128).max)</code> — withdraws everything.</li>
+    </ol>
+    <p>Passing <code>type(uint128).max</code> as the requested amounts is the idiomatic "take all" pattern — the function caps it at what's actually owed.</p>
+    <div class="callout callout-tip">
+      <div class="callout-label">No callback</div>
+      Unlike mint and swap, collect uses a direct <code>TransferHelper.safeTransfer()</code>. There's no callback because the contract is always the debtor here — it owes tokens to the LP, not the other way around.
+    </div>
+  `
+},
+
+'s-burn': {
+  tag: 'tag-func', tagLabel: 'Liquidity',
+  title: 'burn() — remove liquidity, credit tokensOwed',
+  subtitle: 'negative liquidityDelta · does NOT transfer tokens',
+  html: `
+    <p><code>burn()</code> is the inverse of <code>mint()</code>. It reduces the position's liquidity and calculates the proportional token amounts to return — but it does NOT transfer them.</p>
+    <p>Instead, it credits the amounts to <code>position.tokensOwed0/1</code>. The LP then calls <code>collect()</code> to actually receive the tokens.</p>
+    <p><strong>Why the two-step design?</strong></p>
+    <ul>
+      <li>Allows batching: burn multiple positions, then collect all at once.</li>
+      <li>Simplifies the contract: burn only needs write access to position storage, not token transfer logic.</li>
+      <li>Enables partial withdrawal: collect specific amounts rather than everything.</li>
+    </ul>
+    <div class="callout callout-tip">
+      <div class="callout-label">Out-of-range burn</div>
+      Burning an out-of-range position returns only one token (the one the position has converted to). The math in <code>SqrtPriceMath</code> handles this correctly — it returns 0 for the token on the "empty" side.
+    </div>
+  `
+},
+
+'s-swap': {
+  tag: 'tag-core', tagLabel: 'Core ★',
+  title: 'swap() — the tick-crossing loop',
+  subtitle: 'the most important function in DeFi',
+  html: `
+    <p>The swap function is V3's masterpiece. It steps through tick boundaries one at a time, applying the AMM formula within each range, until the input is consumed or the price limit is hit.</p>
+    <p><strong>The loop, in plain English:</strong></p>
+    <ol>
+      <li><strong>Find next initialized tick</strong> — uses bitmap bit-scan to skip uninitiated space in O(1).</li>
+      <li><strong>Compute the swap step</strong> — <code>SwapMath.computeSwapStep</code> determines how much input is consumed and output generated between the current price and the next tick (or the price limit, whichever is closer).</li>
+      <li><strong>Update fee growth</strong> — adds <code>feeAmount / liquidity</code> to the global accumulator.</li>
+      <li><strong>Cross the tick if reached</strong> — calls <code>ticks.cross()</code> which flips the tick's <code>feeGrowthOutside</code>, then applies <code>liquidityNet</code> to update active liquidity.</li>
+      <li><strong>Repeat</strong> until no remaining amount or price limit hit.</li>
+    </ol>
+    <div class="callout callout-math">
+      <div class="callout-label">Exact input vs exact output</div>
+      <code>amountSpecified > 0</code> = exact input (you know how much you're spending). <code>amountSpecified < 0</code> = exact output (you know how much you want). The loop handles both — the sign determines which side of the swap equation is being tracked.
+    </div>
+    <div class="callout callout-gas">
+      <div class="callout-label">Gas cost model</div>
+      Each tick crossing costs ~15,000 gas. A typical swap crosses 0–3 ticks; exotic swaps through thin liquidity might cross many more. This is why tick spacing matters: larger spacing = fewer initialized ticks = cheaper swaps (at the cost of less precise LP ranges).
+    </div>
+    <div class="callout callout-sec">
+      <div class="callout-label">The price limit</div>
+      <code>sqrtPriceLimitX96</code> is not just a slippage check — it's a hard stop built into the loop. The loop terminates if price reaches this value. This is how routers implement slippage protection without a separate assertion.
+    </div>
+    <p><strong>Oracle write:</strong> At most one observation is written per block (on the first tick-crossing swap). All subsequent swaps that block skip the write. This amortizes oracle cost across high-volume blocks.</p>
+    <p><strong>Callback pattern:</strong> The pool sends output tokens FIRST, then calls the callback to collect input tokens, then verifies. This means a malicious caller cannot prevent the pool from collecting — if <code>balance</code> doesn't increase enough, the entire transaction reverts.</p>
+  `
+},
+
+'s-flash': {
+  tag: 'tag-func', tagLabel: 'Flash',
+  title: 'flash() — uncollateralized single-tx loans',
+  subtitle: 'send → callback → verify repayment + fee',
+  html: `
+    <p>Flash loans let any caller borrow up to the pool's entire balance of either or both tokens, use them within a callback, and repay within the same transaction.</p>
+    <p><strong>The mechanics:</strong></p>
+    <ol>
+      <li>Record balance before.</li>
+      <li>Transfer requested amounts to recipient.</li>
+      <li>Call <code>uniswapV3FlashCallback(fee0, fee1, data)</code> — the borrower does its thing here.</li>
+      <li>Verify <code>balance >= balanceBefore + fee</code>. If not, revert the whole tx.</li>
+    </ol>
+    <div class="callout callout-math">
+      <div class="callout-label">Fee calculation</div>
+      The flash fee uses the same fee rate as swaps: <code>fee0 = ceil(amount0 × poolFee / 1,000,000)</code>. For a 0.3% pool borrowing 1M USDC: fee ≈ 3,000 USDC. The fee is distributed to LPs just like swap fees.
+    </div>
+    <div class="callout callout-tip">
+      <div class="callout-label">Zero-fee flash?</div>
+      If the pool has zero active liquidity (all positions out of range), the check <code>require(liquidity > 0)</code> prevents flash loans. This is deliberate — flash fees need active liquidity to distribute to.
+    </div>
+    <p>Flash loans in V3 are simpler than in Aave — no special token, no premium calculation, no callback selector magic. The fee is just the pool's normal fee rate, kept simple.</p>
+  `
+},
+
+'s-observe': {
+  tag: 'tag-oracle', tagLabel: 'Oracle',
+  title: 'observe() — historical TWAP queries',
+  subtitle: 'binary search · secondsAgos · tickCumulative',
+  html: `
+    <p><code>observe()</code> is how protocols query the on-chain price oracle. Pass an array of "seconds ago" values, get back cumulative tick values at those times.</p>
+    <p><strong>Computing a TWAP:</strong></p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;">// 30-minute TWAP
+uint32[] memory secondsAgos = [1800, 0];
+(int56[] memory cumulatives,) = pool.observe(secondsAgos);
+
+int56 delta = cumulatives[1] - cumulatives[0];
+int24 avgTick = int24(delta / 1800);
+uint256 avgPrice = TickMath.getSqrtRatioAtTick(avgTick);</pre>
+    <p>The <code>Oracle.observe()</code> library function handles the case where the exact timestamp isn't stored — it does a binary search over the circular buffer and interpolates linearly between the surrounding observations.</p>
+    <div class="callout callout-sec">
+      <div class="callout-label">Lookback limit</div>
+      You can only query as far back as the oldest observation in the buffer. If cardinality is 1 (default), lookbacks > current block are impossible. Projects that need multi-hour TWAPs must call <code>increaseObservationCardinalityNext()</code> well in advance and wait for the buffer to fill.
+    </div>
+  `
+},
+
+'s-snapshot': {
+  tag: 'tag-oracle', tagLabel: 'Oracle',
+  title: 'snapshotCumulativesInside() — in-range TWAP',
+  subtitle: 'tickCumulativeInside · secondsInside · for yield programs',
+  html: `
+    <p>While <code>observe()</code> gives global tick cumulatives, <code>snapshotCumulativesInside()</code> gives cumulatives for a specific tick range. This is used by liquidity mining programs to measure how long a position was actually earning fees.</p>
+    <p>The function derives "inside" values using the "outside" accumulators stored at the tick boundaries:</p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;">inside = global - below(lower) - above(upper)</pre>
+    <p>Where "below" and "above" are derived from the tick's <code>*Outside</code> storage fields, accounting for which side of the tick the current price is on.</p>
+    <p><code>secondsInside</code> tells incentive contracts how many seconds the current price was inside the given range — perfect for pro-rata reward distribution to LPs whose positions were active.</p>
+    <div class="callout callout-tip">
+      <div class="callout-label">Usage pattern</div>
+      Snapshot at deposit, snapshot at withdrawal. The difference in <code>secondsInside</code> is the time your position was earning. Multiply by your share of liquidity to get your reward proportion.
+    </div>
+  `
+},
+
+'s-protocol': {
+  tag: 'tag-func', tagLabel: 'Governance',
+  title: 'setFeeProtocol() — the protocol fee switch',
+  subtitle: '0 = off · 4–10 = divisor · 4-bit packing',
+  html: `
+    <p>The protocol fee is a cut of LP fees that goes to the Uniswap DAO treasury (or whoever the factory owner is). It is disabled by default (0) and can be set independently for token0 and token1.</p>
+    <p><strong>How the value works:</strong></p>
+    <ul>
+      <li><code>feeProtocol0 = 0</code> → disabled, LPs keep 100% of token0 fees.</li>
+      <li><code>feeProtocol0 = 6</code> → protocol takes 1/6 ≈ 16.7% of LP fees in token0.</li>
+      <li>Valid range: 0 or 4–10. Values outside this revert.</li>
+    </ul>
+    <p>Both values are packed into a single byte in <code>slot0.feeProtocol</code>: low 4 bits = token0 divisor, high 4 bits = token1 divisor. Reading them:</p>
+    <pre style="background:var(--bg3);padding:10px;border-radius:6px;font-size:11px;">feeProtocol0 = slot0.feeProtocol % 16   // low nibble
+feeProtocol1 = slot0.feeProtocol >> 4   // high nibble</pre>
+    <div class="callout callout-sec">
+      <div class="callout-label">Access control</div>
+      Only the factory owner (currently a governance multisig) can call this. There is no timelock on the pool itself — governance contracts wrap the calls with timelocks at a higher level.
+    </div>
+  `
+},
+
+'s-collect-protocol': {
+  tag: 'tag-func', tagLabel: 'Governance',
+  title: 'collectProtocol() — withdraw treasury fees',
+  subtitle: 'factory owner only · mirrors LP collect()',
+  html: `
+    <p>Protocol fees accumulate in <code>protocolFees.token0</code> and <code>protocolFees.token1</code> — separate from LP <code>tokensOwed</code>. Only the factory owner can withdraw them.</p>
+    <p>The function mirrors the LP <code>collect()</code> pattern exactly: cap at what's available, decrement storage, transfer. Simple and safe.</p>
+    <div class="callout callout-tip">
+      <div class="callout-label">No math needed</div>
+      Protocol fees are accumulated as raw token amounts during each swap — the division by <code>feeProtocol</code> happens at fee-split time in <code>swap()</code>, so collection is just a bookkeeping read and transfer.
+    </div>
+    <p>In practice, Uniswap v3 launched with protocol fees turned off on all pools. They can be enabled on a per-pool basis via governance vote.</p>
+  `
+}
+
+};
+
+let activeId = null;
+
+function activateSection(id) {
+  if (activeId) {
+    const prev = document.getElementById(activeId);
+    if (prev) prev.classList.remove('active');
+    const prevLink = document.querySelector(`.sidenav-link[onclick="activateSection('${activeId}')"]`);
+    if (prevLink) prevLink.classList.remove('active');
+  }
+
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  const link = document.querySelector(`.sidenav-link[onclick="activateSection('${id}')"]`);
+  if (link) link.classList.add('active');
+
+  activeId = id;
+
+  const data = explanations[id];
+  const pane = document.getElementById('explain-inner');
+
+  if (!data) {
+    pane.innerHTML = `<div class="explain-placeholder"><div class="icon">📄</div><p>No annotation yet for this section.</p></div>`;
+    return;
+  }
+
+  pane.innerHTML = `
+    <div>
+      <span class="explain-tag ${data.tag}">${data.tagLabel}</span>
+      <div class="explain-title">${data.title}</div>
+      <div class="explain-subtitle">${data.subtitle}</div>
+      <div class="explain-sep"></div>
+      <div class="explain-body">${data.html}</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
